@@ -851,8 +851,12 @@ const fwd = new THREE.Vector2(-Math.sin(AZ), -Math.cos(AZ)), rgt = new THREE.Vec
 let yaw = 0, walkT = 0, path = null, onArrive = null, busy = false;
 
 // ================= 앱 보기 권한 적용 (빛·이름표·누르기·앱 목록) =================
+const ADMIN_EMAIL = 'hyojong.yee@gmail.com';
+function isAdmin() { return LIVE && acct === 'dad' && !!user && (user.email || '').toLowerCase() === ADMIN_EMAIL; }
 function canSee(id, inside) {
   const a = APPS.find(x => x.id === id); if (!a) return true;
+  const inHouse = inside ?? (hero && insideHouse(hero.position.x, hero.position.z));
+  if (inHouse && isAdmin()) return true; // 운영자: 집 안에서는 모든 앱
   const owner = ROOM_OWNER[a.room];
   if (owner === 'shared') return (inside ?? (hero && insideHouse(hero.position.x, hero.position.z))) && (acct !== 'guest' || frontOpen);
   return owner === acct;
@@ -907,7 +911,7 @@ grid4.querySelectorAll('.item').forEach(el => el.onclick = () => {
 });
 $('animalDone').onclick = (e) => {
   e.stopPropagation(); stageView = false; $('animalPanel').style.display = 'none';
-  const s = new THREE.Vector3(Math.sin(AZ), 0, Math.cos(AZ)).multiplyScalar(0.85); hero.position.set(STAGE[0] + s.x, 0, STAGE[1] + s.z); yaw = AZ;
+  const d = ROOMDOORS[3]; path = null; hero.position.set((d.a + d.b) / 2, 0, d.fixed + 0.45); yaw = Math.PI; hero.rotation.y = yaw; // 옷방 문 앞에 문을 보고 섬
 };
 function switchAccount(a) {
   if (!allowed.includes(a)) return;
