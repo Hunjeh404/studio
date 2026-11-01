@@ -423,12 +423,12 @@ TAG = 'duolingo';
 // 듀오링고: 소파 왼쪽 자리에 앉힌 동그란 민트 새 인형 (오리지널 디자인, 좌석 한 칸 크기)
 if (!furn('bird_plush', -1.445, 1.53, Math.PI / 2, 0.47, 0.5)) {
 const plush = new THREE.Group(); plush.position.set(-1.445, 0.47, 1.53); plush.rotation.y = Math.PI / 2; plush.scale.setScalar(0.5); P.add(plush);
-add(plush, sph(0.58), '#58cc02', 0, 0.58, 0).scale.set(1, 0.95, 1); add(plush, sph(0.4), '#89e219', 0.12, 0.5, 0.3).scale.set(1, 1, 0.6);
-add(plush, sph(0.18), '#4caf0a', -0.55, 0.5, 0.05).scale.set(0.5, 1, 1); add(plush, sph(0.18), '#4caf0a', 0.6, 0.5, 0.1).scale.set(0.5, 1, 1);
-add(plush, new THREE.ConeGeometry(0.06, 0.13, 8), C.salmonD, 0.1, 0.78, 0.55).rotation.x = Math.PI / 2;
+add(plush, sph(0.58), '#a5d150', 0, 0.58, 0).scale.set(1, 0.95, 1); add(plush, sph(0.4), '#c0de66', 0.12, 0.5, 0.3).scale.set(1, 1, 0.6);
+add(plush, sph(0.18), '#97c444', -0.55, 0.5, 0.05).scale.set(0.5, 1, 1); add(plush, sph(0.18), '#97c444', 0.6, 0.5, 0.1).scale.set(0.5, 1, 1);
+add(plush, new THREE.ConeGeometry(0.06, 0.13, 8), '#feb866', 0.1, 0.78, 0.55).rotation.x = Math.PI / 2;
 [-0.08, 0.28].forEach(x => add(plush, sph(0.045), C.ink, x, 0.9, 0.5));
 add(plush, box(0.22, 0.28, 0.08), C.navy, 0.45, 0.35, 0.38).rotation.y = -0.6;
-[-0.15, 0.2].forEach(x => add(plush, sph(0.09), C.salmonD, x, 0.06, 0.38).scale.set(1, 0.5, 1.3));
+[-0.15, 0.2].forEach(x => add(plush, sph(0.09), '#feb866', x, 0.06, 0.38).scale.set(1, 0.5, 1.3));
 }
 regApp('duolingo', [-0.8, 1.53], -Math.PI / 2, [-1.445, 0.77, 1.53, 0.6, 0.6, 0.6]);
 TAG = 'sudoku';
