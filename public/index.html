@@ -1232,7 +1232,7 @@ setTimeout(() => { let i = 0; const ks = [...GLB_KINDS]; const next = () => { if
 renderAcct(); checkBell(); sizeTargets(); updateCamera(0, true);
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); step(dt); applyAppVisibility(); updateCamera(dt); updateLabels(); renderFrame(); });
-window.__dbg = { interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; }, get allowed() { return allowed; }, get frontOpen() { return frontOpen; }, canSee, get stageView() { return stageView; }, get stageYaw() { return stageYaw; }, applyAppVisibility, insideHouse };
+window.__dbg = { interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; }, get allowed() { return allowed; }, get frontOpen() { return frontOpen; }, canSee, get stageView() { return stageView; }, get stageYaw() { return stageYaw; }, setStageYaw: (v) => { stageYaw = AZ + v; }, applyAppVisibility, insideHouse };
 </script>
 </body>
 </html>
