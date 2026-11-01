@@ -27,6 +27,11 @@
   #banner { left: 50%; top: 56px; transform: translateX(-50%); display: none; background: rgba(255, 252, 244, .97); border: 1.5px solid #b8a07a; border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
   #banner button { margin-left: 8px; font-size: 13px; border: 1px solid #b8a07a; background: #fff; border-radius: 8px; padding: 4px 10px; }
   #hint { left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 12px; color: #6f6458; pointer-events: none; transition: opacity .6s; white-space: nowrap; }
+  #login { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(237, 231, 214, .78); backdrop-filter: blur(2px); }
+  #login .card { background: #fffcf4; border: 1.5px solid #b8a07a; border-radius: 16px; padding: 22px 24px; text-align: center; color: #5b5248; max-width: 86vw; box-shadow: 0 6px 24px rgba(90, 70, 40, .15); }
+  #login h3 { margin: 0 0 6px; font-size: 19px; color: #4a4038; }
+  #login p { margin: 0 0 16px; font-size: 13px; line-height: 1.5; }
+  #login button { font-size: 15px; padding: 10px 18px; border-radius: 12px; border: 1.5px solid #b8a07a; background: #fff; color: #4a4038; }
   #joyBase { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(120, 100, 80, .13); border: 2px solid rgba(120, 100, 80, .28); display: none; pointer-events: none; z-index: 4; }
   #joyKnob { position: absolute; left: 30px; top: 30px; width: 46px; height: 46px; border-radius: 50%; background: rgba(255, 250, 240, .9); border: 2px solid rgba(120, 100, 80, .45); }
 </style>
@@ -47,6 +52,7 @@
 <div id="bellBtn" class="ui pill">초인종 누르기</div>
 <div id="banner" class="ui"></div>
 <div id="hint" class="ui">끌어서 걷기 · 톡 눌러 이동 · 두 손가락으로 확대</div>
+<div id="login"><div class="card"><h3>우리 집</h3><p>구글 계정으로 들어와 주세요.<br>가족은 각자 방에서, 손님은 정원에서 시작해요.</p><button id="loginBtn">구글로 로그인</button></div></div>
 <div id="joyBase"><div id="joyKnob"></div></div>
 <script type="module">
 import * as THREE from 'three';
@@ -61,6 +67,12 @@ const ACCOUNTS = {
   kid: { name: '딸', email: '아이 계정', room: 'kid', animal: 'cat' },
   guest: { name: '손님', email: '그 밖의 계정', room: 'garden', animal: 'dog' },
 };
+// 로그인: 스도쿠·양치 앱과 같은 Supabase 프로젝트 (공개 키, 데이터는 서버 함수와 권한 규칙으로 보호)
+const SB_URL = 'https://rxzqlopkrlftbkzxrqmd.supabase.co', SB_KEY = 'sb_publishable_bclbp7IfVuBQpzEFB-yJ5w_LhzyO0yo';
+const FAMILY_EMAIL = { 'hyojong.yee@gmail.com': 'dad', 'yelea.nho@gmail.com': 'mom' };
+// 실제 주소(web.app)에서만 구글 로그인. 그 밖(아티팩트 미리보기 등)은 기기 안에서 계정을 고르는 미리보기
+const LIVE = /(\.web\.app|\.firebaseapp\.com)$/.test(location.hostname) || new URLSearchParams(location.search).has('live');
+let sb = null, user = null, allowed = ['dad', 'mom', 'kid', 'guest'], kidName = null, guestUntil = 0;
 const GH = 'https://hunjeh404.github.io/';
 const APPS = [
   { id: 'screening', name: '종목 스크리너', room: '아빠 작업실', url: GH + 'screening/' },
@@ -808,7 +820,7 @@ function spawnHero(x, z, face = 0) {
     loadGlb(kind).then(src => { if (hero !== me) return; const r = rigFromGlb(src); me.remove(proc); me.add(r.model); me.userData.rig = r.J; }).catch(() => { proc.visible = true; });
   }
 }
-function guestInvited() { const t = store.get('invited', 0); return Date.now() - t < 3600e3; }
+function guestInvited() { return LIVE ? guestUntil > Date.now() : Date.now() - store.get('invited', 0) < 12 * 3600e3; }
 function refreshDoor() {
   frontOpen = acct !== 'guest' || guestInvited();
   frontHinge.rotation.y = frontOpen ? -1.45 : 0;
@@ -822,12 +834,23 @@ const $ = (id) => document.getElementById(id);
 const toastEl = $('toast'); let toastT;
 function toast(msg, ms = 2200) { toastEl.textContent = msg; toastEl.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => toastEl.style.display = 'none', ms); }
 function closePanels(except) { ['appsPanel', 'acctPanel', 'animalPanel'].forEach(p => { if (p !== except) $(p).style.display = 'none'; }); }
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const acctName = (a) => a === 'kid' && kidName ? kidName : ACCOUNTS[a].name;
 function renderAcct() {
-  $('acct').textContent = `${ACCOUNTS[acct].name} · ${ANIMALS[animalOf(acct)]}`;
+  $('acct').textContent = `${acctName(acct)} · ${ANIMALS[animalOf(acct)]}`;
   const hist = store.get('history', []);
-  const order = [...hist.filter(k => ACCOUNTS[k]), ...Object.keys(ACCOUNTS).filter(k => !hist.includes(k))];
-  $('acctPanel').innerHTML = '<h4>계정 전환 (최근 순, 이 기기에만 기록)</h4>' + order.map(k => `<div class="item ${k === acct ? 'on' : ''}" data-a="${k}"><span>${ACCOUNTS[k].name}</span><small>${ACCOUNTS[k].email}</small></div>`).join('') + '<h4>구글 로그인은 배포할 때 연결해요</h4>';
-  $('acctPanel').querySelectorAll('.item').forEach(el => el.onclick = () => { switchAccount(el.dataset.a); closePanels(); });
+  const order = [...hist.filter(k => allowed.includes(k)), ...allowed.filter(k => !hist.includes(k))];
+  let h = `<h4>${LIVE ? '이 계정에서 바꾸기' : '계정 전환 (미리보기)'}</h4>` + order.map(k => `<div class="item ${k === acct ? 'on' : ''}" data-a="${k}"><span>${esc(acctName(k))}</span><small>${k === 'kid' ? '아이 프로필' : k === 'guest' ? '손님' : esc(ACCOUNTS[k].email)}</small></div>`).join('');
+  if (LIVE && user) {
+    const me = (user.email || '').toLowerCase(), others = store.get('google', []).filter(g => g.email !== me);
+    h += '<h4>이 기기에서 쓴 구글 계정</h4>' + `<div class="item on"><span>${esc(user.user_metadata?.full_name || me)}</span><small>${esc(me)}</small></div>`
+      + others.map(g => `<div class="item" data-g="${esc(g.email)}"><span>${esc(g.name)}</span><small>${esc(g.email)}</small></div>`).join('')
+      + '<div class="item" data-g=""><span>다른 구글 계정으로 로그인</span></div><div class="item" data-out="1"><span>로그아웃</span></div>';
+  }
+  $('acctPanel').innerHTML = h;
+  $('acctPanel').querySelectorAll('[data-a]').forEach(el => el.onclick = () => { switchAccount(el.dataset.a); closePanels(); });
+  $('acctPanel').querySelectorAll('[data-g]').forEach(el => el.onclick = () => signIn(el.dataset.g));
+  $('acctPanel').querySelectorAll('[data-out]').forEach(el => el.onclick = async () => { closePanels(); await sb.auth.signOut({ scope: 'local' }); location.reload(); });
 }
 function renderApps() {
   const rooms = [...new Set(APPS.map(a => a.room))];
@@ -843,14 +866,18 @@ grid4.querySelectorAll('.item').forEach(el => el.onclick = () => {
   grid4.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e === el));
 });
 function switchAccount(a) {
-  acct = a; store.set('account', a);
+  if (!allowed.includes(a)) return;
+  acct = a; store.set('account', a); if (user) store.set('account:' + (user.email || '').toLowerCase(), a);
   const hist = store.get('history', []).filter(k => k !== a); hist.unshift(a); store.set('history', hist.slice(0, 8));
   refreshDoor();
   const [x, z] = START[ACCOUNTS[a].room]; spawnHero(x, z, 0); path = null; renderAcct(); checkBell();
-  toast(`${ACCOUNTS[a].name} 계정이에요`);
+  toast(`${acctName(a)} 계정이에요`);
 }
-// 손님 초인종 / 가족 초대 (같은 기기에서는 계정 전환으로 확인)
+// 손님 초인종 / 가족 초대 — 실제: Supabase로 다른 기기끼리(가족 화면에 딩동, 초대하면 손님 문이 열림, 12시간) / 미리보기: 같은 기기
+async function rpc(name, args = {}) { const { data, error } = await sb.rpc(name, args); if (error) throw error; return data; }
+let bellShown = null, guestTimer = null;
 function checkBell() {
+  if (LIVE) { pollBells(); return; }
   const bell = store.get('bell', 0), b = $('banner');
   if (acct !== 'guest' && bell && Date.now() - bell < 3600e3) {
     b.innerHTML = '손님이 초인종을 눌렀어요 <button id="inv">초대하기</button><button id="later">나중에</button>'; b.style.display = 'block';
@@ -858,7 +885,71 @@ function checkBell() {
     $('later').onclick = () => b.style.display = 'none';
   } else b.style.display = 'none';
 }
-$('bellBtn').onclick = (e) => { e.stopPropagation(); store.set('bell', Date.now()); toast('딩동! 가족이 초대하면 들어갈 수 있어요', 3000); };
+async function pollBells() {
+  if (!LIVE || !user || acct === 'guest' || !FAMILY_EMAIL[(user.email || '').toLowerCase()] || document.hidden) { if (bellShown) { $('banner').style.display = 'none'; bellShown = null; } return; }
+  let list; try { list = await rpc('house_bells'); } catch { return; }
+  const b = list[0], el = $('banner');
+  if (!b) { if (bellShown) { el.style.display = 'none'; bellShown = null; } return; }
+  if (bellShown === b.id) return;
+  bellShown = b.id;
+  el.innerHTML = `${esc(b.guest_name || '손님')}님이 초인종을 눌렀어요 <button id="inv">초대하기</button><button id="later">다음에</button>`; el.style.display = 'block';
+  $('inv').onclick = () => answerBell(b.id, true); $('later').onclick = () => answerBell(b.id, false);
+}
+async function answerBell(id, ok) {
+  $('banner').style.display = 'none';
+  try { await rpc('house_answer', { bell: id, accept: ok }); toast(ok ? '손님을 초대했어요 (12시간 동안 들어올 수 있어요)' : '다음에 오라고 했어요'); } catch { toast('이미 다른 가족이 대답했어요'); }
+  bellShown = null; setTimeout(pollBells, 300);
+}
+async function loadGuestStatus() {
+  try { const s = await rpc('house_guest_status'); guestUntil = s && s.status === 'invited' ? Date.parse(s.expires_at) : 0; } catch { guestUntil = 0; }
+}
+function watchGuest() {
+  clearInterval(guestTimer); const t0 = Date.now();
+  guestTimer = setInterval(async () => {
+    if (Date.now() - t0 > 600e3) { clearInterval(guestTimer); return; }
+    let s; try { s = await rpc('house_guest_status'); } catch { return; }
+    if (s && s.status === 'invited') { clearInterval(guestTimer); guestUntil = Date.parse(s.expires_at); refreshDoor(); toast('가족이 문을 열어 줬어요! 들어오세요', 3000); }
+    else if (s && s.status === 'declined') { clearInterval(guestTimer); toast('지금은 들어갈 수 없대요. 다음에 놀러 와 주세요', 3000); }
+  }, 3000);
+}
+$('bellBtn').onclick = async (e) => {
+  e.stopPropagation();
+  if (!LIVE) { store.set('bell', Date.now()); toast('딩동! 가족이 초대하면 들어갈 수 있어요', 3000); return; }
+  try {
+    const r = await rpc('house_ring');
+    if (r.status === 'invited' && Date.parse(r.expires_at) > Date.now()) { guestUntil = Date.parse(r.expires_at); refreshDoor(); toast('문이 열려 있어요. 들어오세요'); return; }
+    toast('딩동! 가족이 초대하면 문이 열려요', 3000); watchGuest();
+  } catch { toast('초인종을 누르지 못했어요. 잠시 뒤에 다시 눌러 주세요'); }
+};
+setInterval(pollBells, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollBells(); });
+
+// 로그인 (구글, Supabase). 가족은 아빠·엄마 메일, 딸은 부모 계정 아래 아이 프로필(스도쿠 '아이 프로필 같이 쓰기'), 나머지는 손님
+async function signIn(hint) {
+  const queryParams = hint ? { login_hint: hint } : { prompt: 'select_account' };
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams } });
+  if (error) toast('로그인을 시작하지 못했어요');
+}
+async function initAuth() {
+  if (!LIVE) return true;
+  try {
+    const { createClient } = await import('./vendor/supabase.esm.js');
+    sb = createClient(SB_URL, SB_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'kaylastudio-auth-v1' } });
+    const { data } = await sb.auth.getSession();
+    user = data.session?.user || null;
+  } catch { user = null; }
+  $('loginBtn').onclick = () => signIn('');
+  if (!user) { allowed = []; acct = 'guest'; $('login').style.display = 'flex'; return false; }
+  const email = (user.email || '').toLowerCase(), fam = FAMILY_EMAIL[email];
+  if (fam) {
+    allowed = [fam];
+    try { const ps = await rpc('my_profiles'); const kid = (ps || []).find(p => p.is_child); if (kid) { allowed.push('kid'); kidName = kid.nickname || null; } } catch {}
+  } else { allowed = ['guest']; await loadGuestStatus(); }
+  const seen = store.get('google', []).filter(g => g.email !== email); seen.unshift({ email, name: user.user_metadata?.full_name || email }); store.set('google', seen.slice(0, 5));
+  const want = store.get('account:' + email, allowed[0]);
+  acct = allowed.includes(want) ? want : allowed[0];
+  return true;
+}
 
 // 앱 실행: 소품까지 걸어가서 실행
 const inFrame = (() => { try { return window.self !== window.top; } catch { return true; } })();
@@ -1074,16 +1165,17 @@ function step(dt) {
 
 // ================= 시작 =================
 renderApps();
+const signedIn = await initAuth();
 refreshDoor();
 let ret = null; try { ret = JSON.parse(sessionStorage.getItem('house:return') || 'null'); sessionStorage.removeItem('house:return'); } catch {}
-if (ret && appAt[ret.id] && ACCOUNTS[ret.acct]) { acct = ret.acct; refreshDoor(); const s = appAt[ret.id]; spawnHero(s.at[0], s.at[1], Math.atan2(s.at[0] - s.pick[0], s.at[1] - s.pick[2])); }
+if (ret && appAt[ret.id] && ACCOUNTS[ret.acct] && allowed.includes(ret.acct)) { acct = ret.acct; refreshDoor(); const s = appAt[ret.id]; spawnHero(s.at[0], s.at[1], Math.atan2(s.at[0] - s.pick[0], s.at[1] - s.pick[2])); }
 else { const [x, z] = START[ACCOUNTS[acct].room]; spawnHero(x, z, 0); }
 // 캐릭터 바꿀 때 빈 화면이 없도록 나머지 모델을 틈날 때 미리 불러둠
 setTimeout(() => { let i = 0; const ks = [...GLB_KINDS]; const next = () => { if (i < ks.length) loadGlb(ks[i++]).catch(() => {}).finally(() => setTimeout(next, 150)); }; next(); }, 2500);
 renderAcct(); checkBell(); sizeTargets(); updateCamera(0, true);
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); step(dt); updateCamera(dt); updateLabels(); renderFrame(); });
-window.__dbg = { interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; } };
+window.__dbg = { interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; }, get allowed() { return allowed; }, get frontOpen() { return frontOpen; } };
 </script>
 </body>
 </html>
