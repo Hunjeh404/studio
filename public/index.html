@@ -19,7 +19,8 @@
   .item:active, .item:hover { background: #f0e8d6; }
   .item small { color: #8a7a62; }
   .item.on { background: #e5efe9; }
-  #animalPanel { left: 50%; bottom: 20px; transform: translateX(-50%); width: min(92vw, 420px); }
+  #animalPanel { left: 50%; top: 58px; transform: translateX(-50%); width: min(92vw, 420px); }
+  #animalPanel .done { margin-top: 8px; text-align: center; padding: 8px; border-radius: 10px; border: 1px solid #b8a07a; background: #fff; font-size: 14px; }
   #animalPanel .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   #animalPanel .item { justify-content: center; text-align: center; border: 1px solid #e4dccb; font-size: 13px; }
   #toast { left: 50%; top: 60px; transform: translateX(-50%); background: rgba(58, 55, 57, .85); color: #fff8dc; padding: 8px 14px; border-radius: 10px; font-size: 13px; display: none; max-width: 86vw; text-align: center; }
@@ -47,7 +48,7 @@
 <div id="appsBtn" class="ui pill">앱 목록</div>
 <div id="acctPanel" class="panel"></div>
 <div id="appsPanel" class="panel"></div>
-<div id="animalPanel" class="panel"><div style="margin:2px 4px 8px">캐릭터를 골라 주세요</div><div class="grid"></div></div>
+<div id="animalPanel" class="panel"><div style="margin:2px 4px 8px">캐릭터를 골라 주세요 · 끌어서 돌려 보기</div><div class="grid"></div><div class="done" id="animalDone">다 골랐어요</div></div>
 <div id="toast" class="ui"></div>
 <div id="bellBtn" class="ui pill">초인종 누르기</div>
 <div id="banner" class="ui"></div>
@@ -92,6 +93,10 @@ const APPS = [
   { id: 'sudoku', name: '올림포스 스도쿠', room: '거실', url: GH + 'sudoku/' },
   { id: 'brush', name: '양치', room: '화장실', url: GH + 'brush/' },
 ];
+// 링크(앱) 보기 권한: 자기 방 앱은 자기만, 거실은 공유(초대받은 손님 포함, 집 안에서만), 집 밖(정원 포함)에서는 자기 앱만
+const ROOM_OWNER = { '아빠 작업실': 'dad', '안방': 'mom', '딸 방': 'kid', '화장실': 'kid', '거실': 'shared' };
+const HOUSE_RECTS = [[-8.5, -3, -3, 3], [-3, 3, -3, 3], [-3, 2, -7, -3], [3, 6.5, -3, 0.5], [-6.5, -3, 3, 6.5], [-3, 0, 3, 6.5]]; // 안방, 거실, 딸 방, 화장실, 작업실, 옷방 (x0, x1, z0, z1)
+const insideHouse = (x, z) => HOUSE_RECTS.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
 const ANIMALS = { bear: '곰', cat: '고양이', tiger: '호랑이', dog: '강아지', penguin: '펭귄', rabbit: '토끼',
   poodle: '초코푸들', siamese: '샴고양이', calico: '삼색고양이', lioness: '암사자', lion: '숫사자', otter: '해달' };
 const START = { studio: [-4.8, 5.0], master: [-5.3, 0.6], kid: [-0.5, -5.0], garden: [1.6, 7.8] };
@@ -714,7 +719,23 @@ function resize() {
 }
 addEventListener('resize', resize); resize();
 addEventListener('resize', () => sizeTargets());
+// 옷방 무대: 캐릭터 정면을 크게 (위쪽 고르기 창에 가리지 않게), 끌어서 돌려 보기
+let stageView = false, stageYaw = 0;
+const STAGE_EL = THREE.MathUtils.degToRad(7), CHAR_H = 0.95, CHAR_W = 0.85;
+const stageDir = new THREE.Vector3(Math.sin(AZ) * Math.cos(STAGE_EL), Math.sin(STAGE_EL), Math.cos(AZ) * Math.cos(STAGE_EL));
+const stageUp = new THREE.Vector3(-Math.sin(STAGE_EL) * Math.sin(AZ), Math.cos(STAGE_EL), -Math.sin(STAGE_EL) * Math.cos(AZ));
+function stageCamera() {
+  const r = $('animalPanel').getBoundingClientRect(), top = Math.max(r.bottom, 0) + 14, bot = innerHeight - 18, avail = Math.max(120, bot - top);
+  const baseH = camera.top - camera.bottom, baseW = camera.right - camera.left;
+  const z = Math.min(0.92 * avail / (CHAR_H * innerHeight / baseH), 0.9 * innerWidth / (CHAR_W * innerWidth / baseW));
+  const ppw = innerHeight / baseH * z, off = ((top + bot) / 2 - innerHeight / 2) / ppw;
+  const target = hero.position.clone().add(new THREE.Vector3(0, CHAR_H / 2, 0)).addScaledVector(stageUp, off);
+  camera.zoom = z; camera.near = 3 - 0.6; camera.updateProjectionMatrix(); // 캐릭터 앞 60cm보다 가까운 물건(벽·벤치)은 잘라서 가리지 않게
+  camera.position.copy(target).addScaledVector(stageDir, 3); camera.up.copy(stageUp); camera.lookAt(target);
+}
 function updateCamera(dt, snap) {
+  if (stageView) { stageCamera(); return; }
+  if (camera.near !== 0.1) { camera.near = 0.1; camera.up.set(0, 1, 0); }
   const t = (zoom - ZMIN) / (ZMAX - ZMIN), follow = Math.min(1, t * 1.6);
   const want = HOUSE_C.clone().lerp(new THREE.Vector3(hero.position.x, 0.6, hero.position.z), follow);
   if (snap) camTarget.copy(want); else camTarget.lerp(want, Math.min(1, dt * 5));
@@ -829,6 +850,25 @@ function refreshDoor() {
 const fwd = new THREE.Vector2(-Math.sin(AZ), -Math.cos(AZ)), rgt = new THREE.Vector2(Math.cos(AZ), -Math.sin(AZ));
 let yaw = 0, walkT = 0, path = null, onArrive = null, busy = false;
 
+// ================= 앱 보기 권한 적용 (빛·이름표·누르기·앱 목록) =================
+function canSee(id, inside) {
+  const a = APPS.find(x => x.id === id); if (!a) return true;
+  const owner = ROOM_OWNER[a.room];
+  if (owner === 'shared') return (inside ?? (hero && insideHouse(hero.position.x, hero.position.z))) && (acct !== 'guest' || frontOpen);
+  return owner === acct;
+}
+let seeKey = '', appMeshes = [];
+function applyAppVisibility(force) {
+  if (!hero) return;
+  const inside = insideHouse(hero.position.x, hero.position.z);
+  const vis = APPS.map(a => canSee(a.id, inside)), key = acct + '|' + vis.join('');
+  if (key === seeKey && !force) return; seeKey = key;
+  if (!appMeshes.length) scene.traverse(o => { if (o.isMesh && o.parent !== pickers && o.userData.app && APPS.some(a => a.id === o.userData.app)) appMeshes.push(o); });
+  appMeshes.forEach(o => { if (canSee(o.userData.app, inside)) o.layers.enable(1); else o.layers.disable(1); });
+  pickers.children.forEach(p => { if (p.userData.app) { if (canSee(p.userData.app, inside)) p.layers.enable(2); else p.layers.disable(2); } });
+  if ($('appsPanel').style.display === 'block') renderApps();
+}
+
 // ================= UI =================
 const $ = (id) => document.getElementById(id);
 const toastEl = $('toast'); let toastT;
@@ -853,18 +893,22 @@ function renderAcct() {
   $('acctPanel').querySelectorAll('[data-out]').forEach(el => el.onclick = async () => { closePanels(); await sb.auth.signOut({ scope: 'local' }); location.reload(); });
 }
 function renderApps() {
-  const rooms = [...new Set(APPS.map(a => a.room))];
-  $('appsPanel').innerHTML = rooms.map(r => `<h4>${r}</h4>` + APPS.filter(a => a.room === r).map(a => `<div class="item" data-id="${a.id}"><span>${a.name}</span><small>${a.id}</small></div>`).join('')).join('');
+  const list = APPS.filter(a => canSee(a.id)), rooms = [...new Set(list.map(a => a.room))];
+  $('appsPanel').innerHTML = (list.length ? '' : '<h4>지금 볼 수 있는 앱이 없어요</h4>') + rooms.map(r => `<h4>${r}</h4>` + list.filter(a => a.room === r).map(a => `<div class="item" data-id="${a.id}"><span>${a.name}</span><small>${a.id}</small></div>`).join('')).join('');
   $('appsPanel').querySelectorAll('.item').forEach(el => el.onclick = () => { closePanels(); goApp(el.dataset.id); });
 }
 $('acct').onclick = (e) => { e.stopPropagation(); const p = $('acctPanel'); const show = p.style.display !== 'block'; closePanels(); p.style.display = show ? 'block' : 'none'; };
-$('appsBtn').onclick = (e) => { e.stopPropagation(); const p = $('appsPanel'); const show = p.style.display !== 'block'; closePanels(); p.style.display = show ? 'block' : 'none'; };
+$('appsBtn').onclick = (e) => { e.stopPropagation(); const p = $('appsPanel'); const show = p.style.display !== 'block'; closePanels(); if (show) renderApps(); p.style.display = show ? 'block' : 'none'; };
 const grid4 = $('animalPanel').querySelector('.grid');
 grid4.innerHTML = Object.entries(ANIMALS).map(([k, n]) => `<div class="item" data-k="${k}">${n}</div>`).join('');
 grid4.querySelectorAll('.item').forEach(el => el.onclick = () => {
   store.set('animal:' + acct, el.dataset.k); const { x, z } = hero.position; spawnHero(x, z, hero.rotation.y); renderAcct();
   grid4.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e === el));
 });
+$('animalDone').onclick = (e) => {
+  e.stopPropagation(); stageView = false; $('animalPanel').style.display = 'none';
+  const s = new THREE.Vector3(Math.sin(AZ), 0, Math.cos(AZ)).multiplyScalar(0.85); hero.position.set(STAGE[0] + s.x, 0, STAGE[1] + s.z); yaw = AZ;
+};
 function switchAccount(a) {
   if (!allowed.includes(a)) return;
   acct = a; store.set('account', a); if (user) store.set('account:' + (user.email || '').toLowerCase(), a);
@@ -965,6 +1009,7 @@ function goApp(id) {
   standUp();
   const app = APPS.find(a => a.id === id), spot = appAt[id];
   if (acct === 'guest' && !frontOpen) { toast('손님은 가족이 초대해야 집에 들어갈 수 있어요'); return; }
+  if (!canSee(id)) { toast('이 방 주인만 쓸 수 있어요'); return; }
   const p = findPath(hero.position.x, hero.position.z, spot.at[0], spot.at[1]);
   if (!p) { toast('거기까지 갈 수 없어요'); return; }
   path = p; toast(`${app.name}(으)로 가는 중`, 1500);
@@ -977,12 +1022,15 @@ const ptrs = new Map(); let joy = null, pinch = null; const keys = {};
 const joyVec = { x: 0, y: 0 };
 const cv = renderer.domElement;
 cv.addEventListener('pointerdown', e => {
+  if (stageView) { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: true, stage: true }); return; }
   closePanels(); cv.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom }; joy = null; joyBase.style.display = 'none'; joyVec.x = joyVec.y = 0; }
 });
 cv.addEventListener('pointermove', e => {
-  const p = ptrs.get(e.pointerId); if (!p) return; p.x = e.clientX; p.y = e.clientY;
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  if (p.stage) { if (stageView) stageYaw += (e.clientX - p.x) * 0.012; p.x = e.clientX; p.y = e.clientY; return; }
+  p.x = e.clientX; p.y = e.clientY;
   if (pinch && ptrs.size >= 2) { const [a, b] = [...ptrs.values()]; zoom = THREE.MathUtils.clamp(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, ZMIN, ZMAX); return; }
   const dx = p.x - p.sx, dy = p.y - p.sy;
   if (!p.moved && Math.hypot(dx, dy) > 10) { p.moved = true; joy = e.pointerId; joyBase.style.left = p.sx + 'px'; joyBase.style.top = p.sy + 'px'; joyBase.style.display = 'block'; path = null; hideHint(); }
@@ -1089,7 +1137,7 @@ function updateLabels() {
   const hx = hero.position.x, hz = hero.position.z;
   const posed = hero.userData.pose;
   LABELS.forEach(({ id, el, pick: p, at }) => {
-    const show = Math.min(Math.hypot(hx - at[0], hz - at[1]), Math.hypot(hx - p[0], hz - p[2])) < 1.4 && !posed; // 가까이 가면 이름 (앉거나 누우면 숨김)
+    const show = Math.min(Math.hypot(hx - at[0], hz - at[1]), Math.hypot(hx - p[0], hz - p[2])) < 1.4 && !posed && !stageView && canSee(id); // 가까이 가면 이름 (앉거나 누우면, 남의 앱은 숨김)
     _v.set(p[0], p[1] + p[4] / 2 + 0.05, p[2]).project(camera);
     const x = (_v.x + 1) / 2 * innerWidth, y = (1 - _v.y) / 2 * innerHeight;
     const vis = show && x > -40 && x < innerWidth + 40 && y > 30 && y < innerHeight + 20;
@@ -1102,6 +1150,7 @@ const SPEED = 2.4;
 function step(dt) {
   let ix = joyVec.x + ((keys.arrowright || keys.d) ? 1 : 0) - ((keys.arrowleft || keys.a) ? 1 : 0);
   let iy = joyVec.y + ((keys.arrowdown || keys.s) ? 1 : 0) - ((keys.arrowup || keys.w) ? 1 : 0);
+  if (stageView) { ix = 0; iy = 0; path = null; }
   const len = Math.hypot(ix, iy); if (len > 1) { ix /= len; iy /= len; }
   let { x, z } = hero.position, moved = false;
   if (len <= 0.08 && hero.userData.pose) hero.userData.pose.hold = false; // 밀어서 앉은 뒤엔 손을 한 번 떼야 일어남
@@ -1156,8 +1205,12 @@ function step(dt) {
   }
   // 옷방 무대에 올라서면 캐릭터 고르기
   const onStage = Math.hypot(x - STAGE[0], z - STAGE[1]) < 0.55;
-  if (onStage && !hero.userData.stage) { closePanels('animalPanel'); $('animalPanel').style.display = 'block'; grid4.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e.dataset.k === animalOf(acct))); }
-  if (!onStage && hero.userData.stage) $('animalPanel').style.display = 'none';
+  if (onStage && !hero.userData.stage) {
+    closePanels('animalPanel'); $('animalPanel').style.display = 'block'; grid4.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e.dataset.k === animalOf(acct)));
+    if (!stageView) { stageView = true; stageYaw = AZ; path = null; onArrive = null; joyVec.x = joyVec.y = 0; hideHint(); }
+  }
+  if (!onStage && hero.userData.stage) { $('animalPanel').style.display = 'none'; stageView = false; }
+  if (stageView) { yaw = stageYaw; hero.rotation.y = stageYaw; }
   hero.userData.stage = onStage;
   // 손님이 현관 앞에 서면 초인종
   $('bellBtn').style.display = acct === 'guest' && !frontOpen && x > 0.8 && x < 2.4 && z > 3.1 && z < 4.3 ? 'block' : 'none';
@@ -1174,8 +1227,8 @@ else { const [x, z] = START[ACCOUNTS[acct].room]; spawnHero(x, z, 0); }
 setTimeout(() => { let i = 0; const ks = [...GLB_KINDS]; const next = () => { if (i < ks.length) loadGlb(ks[i++]).catch(() => {}).finally(() => setTimeout(next, 150)); }; next(); }, 2500);
 renderAcct(); checkBell(); sizeTargets(); updateCamera(0, true);
 const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); step(dt); updateCamera(dt); updateLabels(); renderFrame(); });
-window.__dbg = { interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; }, get allowed() { return allowed; }, get frontOpen() { return frontOpen; } };
+renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); step(dt); applyAppVisibility(); updateCamera(dt); updateLabels(); renderFrame(); });
+window.__dbg = { interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; }, get allowed() { return allowed; }, get frontOpen() { return frontOpen; }, canSee, get stageView() { return stageView; }, get stageYaw() { return stageYaw; }, applyAppVisibility, insideHouse };
 </script>
 </body>
 </html>
