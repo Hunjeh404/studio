@@ -156,10 +156,13 @@ function canvasMat(w, h, draw) {
 }
 // 블렌더로 둥글게 만든 가구(GLB, furn/<이름>.js에 base64). 못 불러오면 예전 도형으로 지음
 const FURN = {}, furnMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad });
-await Promise.all(['sofa', 'armchair', 'piano', 'piano_bench', 'metronome', 'round_table', 'low_bookshelf', 'bird_plush', 'garden_bench', 'tea_table', 'garden_chair'].map(k =>
+await Promise.all(['sofa', 'armchair', 'piano', 'piano_bench', 'metronome', 'round_table', 'low_bookshelf', 'bird_plush', 'garden_bench', 'tea_table', 'garden_chair',
+  'master_bed', 'window_curtain', 'kid_curtain', 'dresser', 'uniform_rack', 'player_table', 'phonics_corner', 'bed_bench', 'screening_desk', 'daw_cabinet',
+  'synth_stand', 'lyric_screen', 'tube_amp_mic', 'wall_panel', 'kid_bed', 'laurel_bookshelf', 'tower_typewriter', 'study_desk', 'english_mat', 'front_door',
+  'bathtub', 'brush_sink', 'wardrobe', 'standing_mirror', 'stage_platform', 'garden_gate', 'stone_fence', 'round_tree', 'cone_tree', 'flower_bed', 'bush', 'stepping_stone'].map(k =>
   import(`./furn/${k}.js`).then(mod => new Promise(ok => new GLTFLoader().parse(Uint8Array.from(atob(mod.default), c => c.charCodeAt(0)).buffer, '',
     g => { g.scene.traverse(o => { if (o.isMesh) FURN[k] = o.geometry; }); ok(); }, () => ok()))).catch(() => {})));
-function furn(k, x, z, ry = 0, y = 0, s = 1) { if (!FURN[k]) return false; const o = add(P, FURN[k], furnMat, x, y, z); o.rotation.y = ry; o.scale.multiplyScalar(s); return true; }
+function furn(k, x, z, ry = 0, y = 0, s = 1) { if (!FURN[k]) return false; const o = add(P, FURN[k], furnMat, x, y, z); o.rotation.y = ry; if (Array.isArray(s)) o.scale.multiply(new THREE.Vector3(...s)); else o.scale.multiplyScalar(s); return true; }
 function bake(root) {
   root.updateMatrixWorld(true);
   const byMat = new Map(), out = new THREE.Group(), keep = [];
@@ -294,52 +297,68 @@ function regApp(id, at, face, pick) { TAG = null; appAt[id] = { at: [at[0] + OX,
 // ================= 안방 (엄마) x -8.5~-3, z -3~3 =================
 rug(-5.9, -0.2, 3.2, 3.4, C.lav, '#c9bcd8');
 // 침대 (머리판 왼쪽 벽)
+if (!furn('master_bed', -7.375, -0.95, Math.PI / 2)) {
 add(P, box(0.12, 1.05, 1.95), C.wood, -8.36, 0.53, -0.95);
 add(P, box(2.1, 0.32, 1.85), C.wood, -7.35, 0.18, -0.95);
 add(P, box(2.0, 0.24, 1.75), C.white, -7.32, 0.46, -0.95);
 add(P, box(1.25, 0.08, 1.8), '#cdbde0', -6.95, 0.6, -0.95); add(P, box(0.22, 0.09, 1.81), '#b7a4cf', -6.55, 0.61, -0.95);
 [-1.35, -0.55].forEach(z => add(P, box(0.42, 0.14, 0.62), C.white, -8.05, 0.65, z)); add(P, box(0.3, 0.12, 0.4), C.lav, -7.8, 0.68, -0.95);
+}
 ob(-8.45, -6.3, -1.9, 0); TAG = null;
 [-2.25, 0.35].forEach(z => { add(P, box(0.5, 0.55, 0.48), C.wood, -8.15, 0.28, z); lamp(-8.15, 0.56, z); ob(-8.45, -7.88, z - 0.26, z + 0.26); });
 // 창 아래 커튼
+if (!furn('window_curtain', -6.6, -2.86, 0, 0.85)) {
 add(P, box(0.12, 1.5, 0.08), C.lav, -7.45, 1.6, -2.86); add(P, box(0.12, 1.5, 0.08), C.lav, -5.75, 1.6, -2.86);
+}
 TAG = null;
 // 서랍장
+if (!furn('dresser', -4.75, -2.66)) {
 add(P, box(1.25, 0.92, 0.48), C.wood, -4.75, 0.46, -2.66);
 [0.25, 0.55].forEach(y => add(P, box(1.15, 0.02, 0.5), C.woodD, -4.75, y, -2.65)); plant(-4.45, -2.7, 0.7); lamp(-5.1, 0.92, -2.7);
+}
 ob(-5.4, -4.1, -2.92, -2.4);
 TAG = 'ace-season';
 // 에이스의 계절: 유니폼 걸이 + 배구공
+if (!furn('uniform_rack', -3.65, -2.3)) {
 [-3.95, -3.35].forEach(x => add(P, cyl(0.03, 0.03, 1.5, 8), C.wood, x, 0.75, -2.45));
 add(P, cyl(0.025, 0.025, 0.7, 8), C.wood, -3.65, 1.48, -2.45).rotation.z = Math.PI / 2;
 add(P, box(0.7, 0.04, 0.3), C.wood, -3.65, 0.03, -2.45);
 add(P, box(0.44, 0.5, 0.08), C.navy, -3.65, 1.12, -2.45); add(P, box(0.12, 0.5, 0.085), C.white, -3.65, 1.12, -2.45);
 add(P, box(0.36, 0.22, 0.08), C.navy, -3.65, 0.74, -2.45);
 add(P, sph(0.14), C.white, -3.85, 0.14, -2.0); add(P, new THREE.TorusGeometry(0.14, 0.012, 6, 20), C.gold, -3.85, 0.14, -2.0);
+}
 ob(-4.05, -3.25, -2.6, -1.8); regApp('ace-season', [-3.7, -1.25], Math.PI, [-3.65, 0.8, -2.3, 0.9, 1.6, 0.9]);
 TAG = 'player';
 // 음원재생기: 창 아래 낮은 탁자 위 버튼 상자 (예전 창가 벤치 자리)
+if (!furn('player_table', -6.6, -2.6)) {
 add(P, box(1.0, 0.34, 0.62), C.wood, -6.6, 0.17, -2.6);
 add(P, box(0.72, 0.16, 0.46), C.woodL, -6.6, 0.42, -2.6);
 const btnCols = [C.salmon, C.mint, C.lav, C.blue, C.gold, C.salmonD];
 for (let i = 0; i < 6; i++) add(P, cyl(0.065, 0.065, 0.05, 12), btnCols[i], -6.82 + (i % 3) * 0.22, 0.52, -2.7 + Math.floor(i / 3) * 0.2);
+}
 ob(-7.12, -6.08, -2.93, -2.27); regApp('player', [-6.6, -1.75], 0, [-6.6, 0.4, -2.6, 1.1, 0.8, 0.8]);
 TAG = 'phonics';
 // 파닉스 음원: 왼쪽 벽 ABC 포스터 + 낮은 선반 위 알파벳 블록과 스피커
 const abc = canvasMat(256, 160, (c, w, h) => { c.fillStyle = '#fbf6ea'; c.fillRect(0, 0, w, h); c.font = 'bold 92px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; [['A', '#e58f84'], ['B', '#7fb8a4'], ['C', '#9b8cc4']].forEach(([t, col], i) => { c.fillStyle = col; c.fillText(t, 48 + i * 80, 84); }); });
-add(P, box(0.03, 0.62, 0.95), C.woodD, -8.46, 1.45, 1.45); add(P, box(0.012, 0.54, 0.86), abc, -8.44, 1.45, 1.45).rotation.y = Math.PI / 2;
+if (!FURN.phonics_corner) add(P, box(0.03, 0.62, 0.95), C.woodD, -8.46, 1.45, 1.45); add(P, box(0.012, 0.54, 0.86), abc, -8.44, 1.45, 1.45).rotation.y = Math.PI / 2;
+if (!furn('phonics_corner', -8.27, 1.45, Math.PI / 2)) {
 add(P, box(0.42, 0.42, 0.95), C.woodL, -8.27, 0.21, 1.45);
 [['#e58f84', 1.15, 0], ['#7fb8a4', 1.33, 0], ['#f0c96a', 1.24, 0.15]].forEach(([col, z, y]) => add(P, box(0.15, 0.15, 0.15), col, -8.25, 0.5 + y, z));
 add(P, box(0.26, 0.3, 0.24), C.navy, -8.27, 0.57, 1.72); add(P, cyl(0.075, 0.075, 0.02, 16).rotateZ(Math.PI / 2), '#3a3739', -8.13, 0.6, 1.72); add(P, cyl(0.03, 0.03, 0.025, 12).rotateZ(Math.PI / 2), C.gold, -8.12, 0.6, 1.72);
+}
 ob(-8.5, -8.04, 0.95, 1.95); regApp('phonics', [-7.5, 1.45], -Math.PI / 2, [-8.3, 0.8, 1.45, 0.5, 1.6, 1.0]);
 // 침대 발치 벤치
+if (!furn('bed_bench', -6.0, -0.95, Math.PI / 2)) {
 add(P, box(0.42, 0.42, 1.3), C.woodL, -6.0, 0.21, -0.95); add(P, box(0.43, 0.06, 0.5), C.lav, -6.0, 0.44, -0.75);
+}
 ob(-6.23, -5.77, -1.62, -0.28); TAG = null;
 plant(-3.45, 2.5, 1.1); plant(-8.15, 2.55, 0.9);
 
 // ================= 아빠 작업실 x -6.5~-3, z 3~6.5 (아래 좌표는 x -3~0 기준, 통째로 -3.5 이동) =================
 section(-3.5);
+if (!furn('wall_panel', -2.91, 4.75, Math.PI / 2, 0.05)) {
 add(P, box(0.04, 2.3, 3.3), C.blue, -2.91, 1.2, 4.75); // 파란 벽면
+}
 rug(-1.5, 4.85, 2.0, 2.3, C.blue, C.blueD);
 TAG = 'screening';
 // 종목 스크리너: 책상 + 차트 모니터
@@ -348,39 +367,54 @@ const chart = canvasMat(256, 160, (c, w, h) => {
   for (let i = 0; i < 18; i++) { const x = 12 + i * 13, up = Math.sin(i * 1.3) > -0.2, y = 110 - i * 3.5 - Math.sin(i) * 12; c.fillStyle = up ? '#8fd3a8' : '#f1a38f'; c.fillRect(x, y - 14, 7, 22); c.fillRect(x + 3, y - 22, 1, 38); }
   c.strokeStyle = '#f0deaa'; c.lineWidth = 3; c.beginPath(); for (let i = 0; i < 18; i++) c.lineTo(15 + i * 13, 118 - i * 3.6 - Math.sin(i * 0.7) * 8); c.stroke();
 });
+if (!furn('screening_desk', -2.55, 4.2, Math.PI / 2)) {
 add(P, box(0.7, 0.06, 1.5), C.woodL, -2.55, 0.74, 4.2); add(P, box(0.66, 0.7, 0.06), C.wood, -2.55, 0.37, 3.5); add(P, box(0.66, 0.7, 0.4), C.wood, -2.55, 0.37, 4.75);
-add(P, box(0.07, 0.5, 0.9), C.ink, -2.72, 1.1, 4.2); add(P, box(0.02, 0.43, 0.82), chart, -2.68, 1.1, 4.2);
-add(P, box(0.06, 0.2, 0.06), C.ink, -2.75, 0.86, 4.2); add(P, box(0.2, 0.025, 0.6), '#d8d4cc', -2.35, 0.78, 4.2); lamp(-2.7, 0.77, 3.65);
-ob(-2.92, -2.2, 3.45, 4.95); regApp('screening', [-1.75, 4.2], -Math.PI / 2, [-2.55, 0.8, 4.2, 0.8, 1.6, 1.6]);
+}
+if (!FURN.screening_desk) add(P, box(0.07, 0.5, 0.9), C.ink, -2.72, 1.1, 4.2); add(P, box(0.02, 0.43, 0.82), chart, -2.68, 1.1, 4.2);
+if (!FURN.screening_desk) { add(P, box(0.06, 0.2, 0.06), C.ink, -2.75, 0.86, 4.2); add(P, box(0.2, 0.025, 0.6), '#d8d4cc', -2.35, 0.78, 4.2); } lamp(-2.7, 0.77, 3.65);
+ob(-2.92, -2.2, 3.45, 4.95); regApp('screening', [-1.5, 4.2], -Math.PI / 2, [-2.55, 0.8, 4.2, 0.8, 1.6, 1.6]);
 TAG = 'daw';
 // DAW: 장 위 믹서 + 스피커
+if (!furn('daw_cabinet', -2.6, 5.8, Math.PI / 2)) {
 add(P, box(0.6, 0.62, 1.0), C.wood, -2.6, 0.31, 5.85);
 add(P, box(0.5, 0.1, 0.72), C.ink, -2.6, 0.67, 5.85);
 for (let i = 0; i < 6; i++) add(P, box(0.3, 0.03, 0.035), i % 2 ? C.gold : C.blue, -2.58, 0.735, 5.6 + i * 0.1);
 [5.2, 6.5 - 0.22].forEach(z => { add(P, box(0.32, 0.46, 0.3), C.ink, -2.6, 0.85, z); add(P, cyl(0.09, 0.09, 0.03, 14), C.goldD, -2.43, 0.8, z).rotation.z = Math.PI / 2; });
+}
 ob(-2.92, -2.28, 5.05, 6.42); regApp('daw', [-1.85, 5.45], -Math.PI / 2, [-2.6, 0.7, 5.8, 0.8, 1.4, 1.4]);
 TAG = 'suno-prompter';
 // 수노 프롬프터: X자 거치대 신시사이저
+if (!furn('synth_stand', -1.15, 6.15, Math.PI)) {
 [-1.5, -0.8].forEach(x => { const a = add(P, box(0.05, 0.85, 0.05), C.ink, x, 0.4, 6.15); a.rotation.x = 0.5; const b = add(P, box(0.05, 0.85, 0.05), C.ink, x, 0.4, 6.15); b.rotation.x = -0.5; });
 add(P, box(1.25, 0.09, 0.36), C.ink, -1.15, 0.8, 6.15); add(P, box(1.12, 0.02, 0.16), C.white, -1.15, 0.85, 6.22);
 for (let i = 0; i < 12; i++) add(P, box(0.035, 0.025, 0.09), C.ink, -1.65 + i * 0.09, 0.86, 6.19);
+}
 ob(-1.8, -0.5, 5.95, 6.36); regApp('suno-prompter', [-1.15, 5.45], 0, [-1.15, 0.6, 6.15, 1.4, 1.2, 0.6]);
 TAG = 'lyricvid';
 // 가사 영상: 세운 스크린 + 영사기
+if (!furn('lyric_screen', -0.49, 3.3)) {
 [-0.88, -0.1].forEach(x => add(P, cyl(0.02, 0.02, 1.8, 6), C.ink, x, 0.9, 3.3));
+}
 const lyric = canvasMat(256, 160, (c, w, h) => { c.fillStyle = '#e8eef6'; c.fillRect(0, 0, w, h); c.strokeStyle = '#f0c96a'; c.lineCap = 'round'; [40, 72, 104].forEach((y, i) => { c.lineWidth = 9 - i * 2; c.beginPath(); c.moveTo(50 + i * 10, y); c.bezierCurveTo(100, y - 10, 150, y + 10, 210 - i * 12, y); c.stroke(); }); });
-add(P, box(0.74, 0.55, 0.03), lyric, -0.49, 1.35, 3.3); add(P, cyl(0.03, 0.03, 0.82, 8), C.wood, -0.49, 1.65, 3.3).rotation.z = Math.PI / 2;
+add(P, box(0.74, 0.55, 0.03), lyric, -0.49, 1.35, 3.3); if (!FURN.lyric_screen) add(P, cyl(0.03, 0.03, 0.82, 8), C.wood, -0.49, 1.65, 3.3).rotation.z = Math.PI / 2;
+if (!FURN.lyric_screen) {
 add(P, box(0.34, 0.55, 0.34), C.wood, -0.35, 0.28, 3.95);
 add(P, box(0.24, 0.18, 0.3), '#e9e3d6', -0.35, 0.64, 3.95); [3.88, 4.05].forEach(z => add(P, cyl(0.07, 0.07, 0.03, 12), C.ink, -0.35, 0.82, z).rotation.x = Math.PI / 2);
+}
 ob(-0.92, -0.06, 3.22, 3.4); ob(-0.54, -0.16, 3.76, 4.14); regApp('lyricvid', [-0.85, 4.05], Math.PI, [-0.5, 0.9, 3.5, 1.0, 1.8, 0.9]);
 appAt.lipsync = appAt.lyricvid; // 같은 물건 (영상 제작으로 묶음)
 TAG = 'megaphone';
 // 확성기: 진공관 앰프 + 마이크
+const AMP = furn('tube_amp_mic', -0.32, 5.1, -Math.PI / 2);
+if (!AMP) {
 add(P, box(0.55, 0.42, 0.36), C.ink, -0.32, 0.21, 5.1); add(P, box(0.45, 0.22, 0.02), '#5b5658', -0.32, 0.18, 5.29 - 0.0);
-[-0.45, -0.32, -0.19].forEach(x => { add(P, cyl(0.035, 0.035, 0.12, 8), glowMat, x, 0.48, 5.05); });
+}
+if (AMP) [4.97, 5.1, 5.23].forEach(z => add(P, cyl(0.035, 0.035, 0.12, 8), glowMat, -0.27, 0.5, z)); else [-0.45, -0.32, -0.19].forEach(x => { add(P, cyl(0.035, 0.035, 0.12, 8), glowMat, x, 0.48, 5.05); });
+if (!AMP) {
 add(P, cyl(0.015, 0.02, 0.3, 6), C.goldD, -0.32, 0.57, 5.2); add(P, cyl(0.05, 0.05, 0.12, 10), '#d8d4cc', -0.32, 0.77, 5.2);
-ob(-0.62, -0.02, 4.9, 5.3); regApp('megaphone', [-0.95, 5.1], Math.PI / 2, [-0.32, 0.4, 5.1, 0.7, 0.9, 0.6]);
-add(P, cyl(0.17, 0.17, 0.05, 14), C.blueD, -1.9, 0.45, 4.2); add(P, cyl(0.03, 0.03, 0.44, 6), C.ink, -1.9, 0.22, 4.2); TAG = null;
+}
+ob(-0.62, -0.02, 4.9, 5.3); if (AMP) ob(-0.47, -0.17, 5.37, 5.67); regApp('megaphone', [-0.95, 5.1], Math.PI / 2, [-0.32, 0.4, 5.1, 0.7, 0.9, 0.6]);
+if (!FURN.screening_desk) { add(P, cyl(0.17, 0.17, 0.05, 14), C.blueD, -1.9, 0.45, 4.2); add(P, cyl(0.03, 0.03, 0.44, 6), C.ink, -1.9, 0.22, 4.2); } TAG = null;
 plant(-0.3, 6.2, 0.8);
 
 section(0);
@@ -388,37 +422,50 @@ section(0);
 rug(-1.8, -5.4, 2.0, 2.0, '#f6dcc6', C.salmon);
 // 침대 (체크 이불)
 const plaid = canvasMat(128, 128, (c, w, h) => { c.fillStyle = '#f7ddc8'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(232,167,119,.5)'; for (let i = 0; i < 4; i++) { c.fillRect(i * 32 + 8, 0, 10, h); c.fillRect(0, i * 32 + 8, w, 10); } });
+if (!furn('kid_bed', -1.965, -6.15, Math.PI / 2)) {
 add(P, box(0.12, 0.95, 1.3), C.wood, -2.86, 0.48, -6.15);
 add(P, box(1.9, 0.3, 1.25), C.wood, -1.95, 0.17, -6.15); add(P, box(1.85, 0.22, 1.2), C.white, -1.93, 0.42, -6.15);
 add(P, box(1.25, 0.08, 1.24), plaid, -1.65, 0.57, -6.15); add(P, box(0.4, 0.13, 0.55), C.mint, -2.6, 0.6, -6.35); add(P, cyl(0.15, 0.15, 0.08, 10), C.white, -2.55, 0.66, -5.85);
+}
 ob(-2.95, -0.98, -6.85, -5.5); TAG = null;
+if (!furn('kid_curtain', -1.9, -6.88, 0, 0.9)) {
 add(P, box(0.12, 1.4, 0.08), C.salmon, -2.5, 1.6, -6.88); add(P, box(0.12, 1.4, 0.08), C.salmon, -1.3, 1.6, -6.88);
+}
 TAG = 'greek-myth-map';
 // 그리스 신화: 월계관 책장
+if (!furn('laurel_bookshelf', -0.4, -6.75)) {
 add(P, box(1.0, 1.7, 0.05), C.woodD, -0.4, 0.85, -6.92); [-0.88, 0.08].forEach(x => add(P, box(0.06, 1.7, 0.4), C.wood, x, 0.85, -6.75)); add(P, box(1.0, 0.06, 0.4), C.wood, -0.4, 1.7, -6.75);
-[0.06, 0.5, 0.95, 1.4].forEach(y => add(P, box(0.92, 0.04, 0.38), C.wood, -0.4, y, -6.74)); [0.08, 0.52, 0.97].forEach(y => books(-0.8, y, -6.75, 9));
-for (let i = 0; i < 7; i++) { const a = Math.PI * (0.15 + i * 0.7 / 6); add(P, ball(0.06), C.goldD, -0.4 + Math.cos(a) * 0.22 * (i < 4 ? -1 : 1), 1.82 + Math.sin(a) * 0.12, -6.72); }
+}
+if (!FURN.laurel_bookshelf) [0.06, 0.5, 0.95, 1.4].forEach(y => add(P, box(0.92, 0.04, 0.38), C.wood, -0.4, y, -6.74)); [0.08, 0.52, 0.97].forEach(y => books(-0.8, y, -6.75, 9));
+if (!FURN.laurel_bookshelf) for (let i = 0; i < 7; i++) { const a = Math.PI * (0.15 + i * 0.7 / 6); add(P, ball(0.06), C.goldD, -0.4 + Math.cos(a) * 0.22 * (i < 4 ? -1 : 1), 1.82 + Math.sin(a) * 0.12, -6.72); }
 ob(-0.92, 0.12, -6.95, -6.52); regApp('greek-myth-map', [-0.4, -5.85], Math.PI, [-0.4, 0.95, -6.7, 1.1, 1.9, 0.6]);
 TAG = 'tower-typing';
 // 천 갈래 탑 타자: 탑 모양 타자기
+if (!furn('tower_typewriter', 0.85, -6.6)) {
 add(P, box(0.75, 0.6, 0.6), C.woodL, 0.85, 0.3, -6.6);
 add(P, cyl(0.17, 0.19, 0.7, 12), '#efe9dc', 1.05, 0.95, -6.7); add(P, new THREE.ConeGeometry(0.24, 0.42, 12), C.blueD, 1.05, 1.51, -6.7);
 add(P, sph(0.05), C.gold, 1.05, 1.76, -6.7); add(P, ball(0.09), C.leafD, 0.9, 0.85, -6.55); add(P, ball(0.07), C.leaf, 1.2, 1.1, -6.58);
 add(P, box(0.42, 0.15, 0.32), C.ink, 0.7, 0.68, -6.5); add(P, box(0.3, 0.2, 0.02), C.white, 0.7, 0.84, -6.6);
+}
 ob(0.45, 1.25, -6.95, -6.28); regApp('tower-typing', [0.8, -5.65], Math.PI, [0.9, 0.9, -6.6, 0.9, 1.8, 0.8]);
 TAG = 'mock';
 // 국어 모의고사: 공부 책상 (오른쪽 낮은 벽 앞)
+if (!furn('study_desk', 1.6, -4.65, -Math.PI / 2)) {
 add(P, box(0.6, 0.06, 1.1), C.woodL, 1.6, 0.72, -4.65); [-5.15, -4.15].forEach(z => add(P, box(0.56, 0.7, 0.05), C.wood, 1.6, 0.35, z));
 add(P, box(0.34, 0.015, 0.24), C.white, 1.55, 0.76, -4.85); add(P, box(0.34, 0.015, 0.24), C.white, 1.55, 0.76, -4.6);
-add(P, cyl(0.008, 0.008, 0.18, 5), C.gold, 1.45, 0.77, -4.3).rotation.x = Math.PI / 2; add(P, cyl(0.06, 0.06, 0.04, 14), C.goldD, 1.7, 0.78, -4.25); lamp(1.75, 0.75, -5.05);
+add(P, cyl(0.008, 0.008, 0.18, 5), C.gold, 1.45, 0.77, -4.3).rotation.x = Math.PI / 2; add(P, cyl(0.06, 0.06, 0.04, 14), C.goldD, 1.7, 0.78, -4.25);
 add(P, box(0.4, 0.05, 0.4), C.wood, 1.05, 0.45, -4.65); add(P, box(0.05, 0.45, 0.4), C.wood, 0.85, 0.7, -4.65);
 [[0.88, -4.82], [1.22, -4.82], [0.88, -4.48], [1.22, -4.48]].forEach(([x, z]) => add(P, box(0.04, 0.45, 0.04), C.woodD, x, 0.22, z));
+}
+lamp(1.75, 0.75, -5.05);
 ob(1.28, 1.92, -5.22, -4.08); ob(0.83, 1.27, -4.87, -4.43); regApp('mock', [0.45, -4.0], -Math.PI / 4, [1.5, 0.6, -4.65, 0.8, 1.2, 1.2]);
 TAG = 'english';
 // 영어 읽기: 바닥 방석 + 펼친 그림책 + 알파벳 블록
+if (!furn('english_mat', -2.36, -4.91)) {
 add(P, cyl(0.42, 0.44, 0.14, 20), '#f3c9b6', -2.20, 0.07, -4.95); add(P, cyl(0.3, 0.32, 0.03, 20), C.mint, -2.20, 0.15, -4.95);
 const bookL = add(P, box(0.22, 0.02, 0.3), C.blue, -2.31, 0.19, -4.95); bookL.rotation.z = 0.15; const bookR = add(P, box(0.22, 0.02, 0.3), C.white, -2.09, 0.19, -4.95); bookR.rotation.z = -0.15;
 [[C.salmon, -2.80, -4.55], [C.lav, -2.78, -4.75], [C.gold, -2.80, -4.62]].forEach(([c, x, z], i) => add(P, box(0.13, 0.13, 0.13), c, x, 0.065 + (i === 2 ? 0.13 : 0), z));
+}
 ob(-2.95, -1.78, -5.37, -4.45); regApp('english', [-1.4, -4.15], -Math.PI * 0.75, [-2.2, 0.3, -4.95, 1.0, 0.6, 1.0]); // 침대 옆
 plant(1.65, -6.6, 0.8); plant(-2.7, -3.4, 0.7);
 
@@ -483,23 +530,27 @@ plant(-2.6, 2.6, 0.9); plant(2.6, 2.6, 0.9); plant(2.6, 0.95, 0.75);
 // 현관문 (손님 초대 여부로 열림)
 doorFrame('x', 3, 1.0, 2.2, C.wood);
 const frontHinge = new THREE.Group(); frontHinge.position.set(1.04, 0, 3); frontHinge.userData.keep = true; P.add(frontHinge);
-add(frontHinge, box(1.12, 1.95, 0.07), C.wood, 0.56, 0.98, 0); add(frontHinge, box(0.4, 0.45, 0.08), glassMat, 0.56, 1.45, 0.005); add(frontHinge, sph(0.04), C.goldD, 0.98, 1.0, 0.06);
+if (FURN.front_door) add(frontHinge, FURN.front_door, furnMat, 0.56, 0, 0); else { add(frontHinge, box(1.12, 1.95, 0.07), C.wood, 0.56, 0.98, 0); add(frontHinge, box(0.4, 0.45, 0.08), glassMat, 0.56, 1.45, 0.005); add(frontHinge, sph(0.04), C.goldD, 0.98, 1.0, 0.06); }
 add(P, box(0.1, 0.14, 0.04), C.goldD, 2.42, 1.2, 3.1); add(P, sph(0.025), C.salmonD, 2.42, 1.2, 3.13); // 초인종
 add(P, cyl(0.07, 0.11, 0.16, 10), C.gold, 2.45, 1.75, 3.15);
 
 ROUND = false;
 // ================= 화장실 x 3~6.5, z -3~0.5 =================
+if (!furn('bathtub', 4.0, -2.5)) {
 add(P, box(1.6, 0.55, 0.78), C.white, 4.0, 0.3, -2.5); add(P, box(1.4, 0.04, 0.6), C.blue, 4.0, 0.56, -2.5);
 [[3.3, -2.8], [4.7, -2.8], [3.3, -2.2], [4.7, -2.2]].forEach(([x, z]) => add(P, sph(0.05), C.goldD, x, 0.03, z));
 add(P, cyl(0.02, 0.02, 0.5, 6), C.goldD, 3.35, 0.8, -2.85); add(P, box(0.5, 0.04, 0.12), C.woodL, 4.2, 0.6, -2.5);
+}
 ob(3.18, 4.82, -2.92, -2.08);
 TAG = 'brush';
 // 양치: 세면대 + 양치컵 + 거울
+if (!furn('brush_sink', 5.75, -2.65)) {
 add(P, box(1.0, 0.8, 0.55), '#8fa3c0', 5.75, 0.4, -2.65); add(P, box(1.06, 0.06, 0.6), C.white, 5.75, 0.83, -2.65);
 add(P, cyl(0.2, 0.17, 0.06, 16), '#e9eef3', 5.7, 0.85, -2.62); add(P, cyl(0.015, 0.015, 0.2, 6), C.goldD, 5.7, 0.95, -2.85);
 add(P, cyl(0.06, 0.05, 0.14, 12), C.mint, 6.08, 0.93, -2.6); add(P, cyl(0.01, 0.01, 0.22, 5), C.salmon, 6.08, 1.05, -2.6).rotation.z = 0.2;
 const mir = add(P, cyl(0.3, 0.3, 0.04, 24), C.goldD, 5.75, 1.6, -2.9); mir.rotation.x = Math.PI / 2; mir.scale.set(0.8, 1, 1.1);
 const mg = add(P, cyl(0.25, 0.25, 0.045, 24), glassMat, 5.75, 1.6, -2.88); mg.rotation.x = Math.PI / 2; mg.scale.set(0.8, 1, 1.1);
+}
 ob(5.22, 6.32, -2.95, -2.35); regApp('brush', [5.75, -1.75], Math.PI, [5.8, 1.0, -2.65, 1.1, 1.4, 0.8]);
 rug(4.6, -1.1, 0.9, 0.6, C.white, C.blue); plant(6.2, 0.15, 0.8);
 add(P, box(0.6, 0.03, 0.05), C.goldD, 4.0, 1.6, -2.92); add(P, box(0.28, 0.5, 0.04), C.white, 4.0, 1.38, -2.9);
@@ -507,20 +558,24 @@ add(P, box(0.6, 0.03, 0.05), C.goldD, 4.0, 1.6, -2.92); add(P, box(0.28, 0.5, 0.
 // ================= 옷방 x -3~0, z 3~6.5 (아래 좌표는 x -6.5~-3 기준, 통째로 +3.5 이동) =================
 section(3.5);
 roundRug(-4.6, 4.9, 1.15, '#f3eee3', C.lav);
+if (!furn('wardrobe', -6.12, 4.6, Math.PI / 2)) {
 add(P, box(0.06, 1.55, 1.5), C.woodD, -6.4, 0.78, 4.6); [3.88, 5.32].forEach(z => add(P, box(0.62, 1.55, 0.06), C.wood, -6.12, 0.78, z)); add(P, box(0.66, 0.07, 1.52), C.wood, -6.12, 1.58, 4.6); add(P, box(0.62, 0.3, 1.4), C.wood, -6.12, 0.15, 4.6);
 add(P, cyl(0.015, 0.015, 1.4, 6), C.goldD, -6.1, 1.38, 4.6).rotation.x = Math.PI / 2;
 [[C.mint, 4.15], [C.salmon, 4.6], [C.lav, 5.05]].forEach(([c, z]) => { add(P, box(0.14, 0.55, 0.38), c, -6.1, 1.0, z); add(P, sph(0.06), c, -6.1, 1.32, z - 0.1); add(P, sph(0.06), c, -6.1, 1.32, z + 0.1); });
+}
 ob(-6.45, -5.3, 3.4, 5.8);
+if (!furn('standing_mirror', -6.3, 6.0, Math.PI / 2 + 0.5)) {
 add(P, box(0.08, 1.7, 0.6), C.goldD, -6.3, 0.95, 6.0).rotation.y = 0.5; add(P, box(0.09, 1.55, 0.48), glassMat, -6.27, 0.95, 6.0).rotation.y = 0.5;
+}
 ob(-6.45, -5.95, 5.7, 6.35);
-TAG = 'stage'; add(P, cyl(0.6, 0.62, 0.2, 28), C.lav, -4.4, 0.1, 4.9); add(P, cyl(0.56, 0.56, 0.03, 28), C.white, -4.4, 0.21, 4.9); TAG = null;
+TAG = 'stage'; if (!furn('stage_platform', -4.4, 4.9)) { add(P, cyl(0.6, 0.62, 0.2, 28), C.lav, -4.4, 0.1, 4.9); add(P, cyl(0.56, 0.56, 0.03, 28), C.white, -4.4, 0.21, 4.9); } TAG = null;
 const STAGE = [-4.4 + OX, 4.9];
 plant(-3.45, 6.1, 0.8);
 
 section(0);
 // ================= 정원 =================
 const stoneCols = ['#ece8e8', '#dfd9e6', '#ebe2d6', '#e3ddd2'];
-for (let i = 0; i < 9; i++) { const z = 3.5 + i * 0.5, x = 1.6 + Math.sin(i * 1.7) * 0.12; add(P, cyl(0.27, 0.29, 0.05, 9), stoneCols[i % 4], x, 0.02, z); }
+for (let i = 0; i < 9; i++) { const z = 3.5 + i * 0.5, x = 1.6 + Math.sin(i * 1.7) * 0.12; if (!furn('stepping_stone', x, z, i * 1.3, -0.005)) add(P, cyl(0.27, 0.29, 0.05, 9), stoneCols[i % 4], x, 0.02, z); }
 add(P, box(1.2, 0.08, 0.6), '#e2ddd6', 1.6, 0.04, 3.35);
 // 벤치
 if (!furn('garden_bench', 0.545, 5.8, Math.PI / 2)) {
@@ -536,19 +591,29 @@ add(P, cyl(0.07, 0.06, 0.1, 10), C.white, 3.95, 0.7, 5.35); add(P, sph(0.06), C.
 [[3.3, 5.4, Math.PI / 2], [4.7, 5.4, -Math.PI / 2]].forEach(([x, z, r]) => { if (furn('garden_chair', x, z, r)) return; const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = r; P.add(g); add(g, cyl(0.28, 0.25, 0.42, 14), '#d9bf94', 0, 0.21, 0); add(g, box(0.56, 0.4, 0.1), '#d9bf94', 0, 0.6, -0.24); add(g, cyl(0.24, 0.24, 0.06, 14), C.white, 0, 0.45, 0); });
 ob(2.98, 5.02, 5.0, 5.8); TAG = null;
 // 울타리 (낮은 돌담) + 대문
-function fence(axis, fixed, a, b) { wall(axis, fixed, a, b, 0.45, [], '#f1ece1'); }
+function fence(axis, fixed, a, b) {
+  if (!FURN.stone_fence) return wall(axis, fixed, a, b, 0.45, [], '#f1ece1');
+  const n = Math.max(1, Math.round(b - a)), L = (b - a) / n; // 돌담 조각을 이어 붙임
+  for (let i = 0; i < n; i++) { const c = a + (i + 0.5) * L; if (axis === 'x') furn('stone_fence', c, fixed, 0, 0, [L, 1, 1]); else furn('stone_fence', fixed, c, Math.PI / 2, 0, [L, 1, 1]); }
+  if (axis === 'x') ob(a, b, fixed - T / 2, fixed + T / 2); else ob(fixed - T / 2, fixed + T / 2, a, b);
+}
 fence('z', 5.5, 3, 8.2); fence('x', 8.2, 0, 1.0); fence('x', 8.2, 2.2, 5.5); fence('z', 0, 6.5, 8.2); fence('x', 3, 3, 5.5);
+if (!furn('garden_gate', 1.6, 8.2)) {
 [1.0, 2.2].forEach(x => { add(P, box(0.26, 0.8, 0.26), '#f1ece1', x, 0.4, 8.2); add(P, cyl(0.07, 0.1, 0.16, 8), C.gold, x, 0.9, 8.2); });
+}
+if (!FURN.garden_gate) {
 for (let i = 0; i < 6; i++) add(P, cyl(0.015, 0.015, 0.65, 4), C.ink, 1.15 + i * 0.18, 0.33, 8.2);
-add(P, box(1.0, 0.04, 0.03), C.ink, 1.6, 0.62, 8.2); ob(1.0, 2.2, 8.1, 8.3);
+}
+if (!FURN.garden_gate) add(P, box(1.0, 0.04, 0.03), C.ink, 1.6, 0.62, 8.2); ob(1.0, 2.2, 8.1, 8.3);
 // 꽃밭
 function flowerBed(x, z, n, spread) {
   for (let i = 0; i < n; i++) { const a = i * 2.4, r = spread * Math.sqrt((i + 0.5) / n), px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
     add(P, ball(0.16 + (i % 3) * 0.03), i % 2 ? C.leaf : C.leafD, px, 0.15, pz); add(P, sph(0.05), i % 3 === 0 ? C.lav : C.white, px, 0.32, pz + 0.05); }
 }
-flowerBed(4.85, 3.55, 7, 0.4); flowerBed(4.8, 7.55, 8, 0.45); flowerBed(3.2, 7.75, 7, 0.4); flowerBed(0.5, 7.6, 6, 0.35); flowerBed(0.45, 3.5, 5, 0.3); flowerBed(3.6, 3.5, 5, 0.3);
+if (FURN.flower_bed) [[4.35, 5.4, 3.1, 4.0], [4.25, 5.4, 7.0, 8.1], [2.7, 3.7, 7.25, 8.1], [0.1, 0.9, 7.15, 8.1], [0.1, 0.8, 3.15, 3.85], [3.25, 3.95, 3.15, 3.85]].forEach(([x0, x1, z0, z1]) => furn('flower_bed', (x0 + x1) / 2, (z0 + z1) / 2, 0, 0, [(x1 - x0) * 0.95, 1, (z1 - z0) * 0.95]));
+else { flowerBed(4.85, 3.55, 7, 0.4); flowerBed(4.8, 7.55, 8, 0.45); flowerBed(3.2, 7.75, 7, 0.4); flowerBed(0.5, 7.6, 6, 0.35); flowerBed(0.45, 3.5, 5, 0.3); flowerBed(3.6, 3.5, 5, 0.3); }
 ob(4.35, 5.4, 3.1, 4.0); ob(4.25, 5.4, 7.0, 8.1); ob(2.7, 3.7, 7.25, 8.1); ob(0.1, 0.9, 7.15, 8.1); ob(0.1, 0.8, 3.15, 3.85); ob(3.25, 3.95, 3.15, 3.85);
-[[5.1, 6.4], [0.4, 4.35], [2.7, 6.9]].forEach(([x, z]) => { add(P, new THREE.ConeGeometry(0.3, 1.3, 9), C.leafD, x, 0.75, z); add(P, cyl(0.06, 0.06, 0.2, 6), C.woodD, x, 0.1, z); ob(x - 0.3, x + 0.3, z - 0.3, z + 0.3); });
+[[5.1, 6.4], [0.4, 4.35], [2.7, 6.9]].forEach(([x, z]) => { if (!furn('cone_tree', x, z, 0, 0, 0.7)) { add(P, new THREE.ConeGeometry(0.3, 1.3, 9), C.leafD, x, 0.75, z); add(P, cyl(0.06, 0.06, 0.2, 6), C.woodD, x, 0.1, z); } ob(x - 0.3, x + 0.3, z - 0.3, z + 0.3); });
 
 
 // ================= 집 둘레 정원 (꾸밈, 걸어 다니는 곳은 아님) =================
@@ -560,15 +625,18 @@ ob(4.35, 5.4, 3.1, 4.0); ob(4.25, 5.4, 7.0, 8.1); ob(2.7, 3.7, 7.25, 8.1); ob(0.
   add(world, slab(inner, 0.06), '#c3d4a6', 0, -0.13, 0);
   // 뒤쪽 큰 나무 (둥근 나무 + 원뿔 나무)
   function roundTree(x, z, s = 1, leaf = C.leaf) {
+    if (furn('round_tree', x, z, x, -0.1, 1.15 * s)) return;
     add(world, cyl(0.1 * s, 0.14 * s, 1.0 * s, 8), C.woodD, x, 0.5 * s - 0.1, z);
     add(world, ball(0.75 * s, 1), leaf, x, 1.45 * s, z); add(world, ball(0.55 * s, 1), C.leafD, x + 0.35 * s, 1.25 * s, z + 0.2 * s); add(world, ball(0.5 * s, 1), '#a3c4a8', x - 0.3 * s, 1.75 * s, z - 0.15 * s);
   }
-  function coneTree(x, z, s = 1) { add(world, new THREE.ConeGeometry(0.42 * s, 1.9 * s, 10), C.leafD, x, 1.0 * s, z); add(world, cyl(0.07 * s, 0.08 * s, 0.25 * s, 6), C.woodD, x, 0.05, z); }
+  function coneTree(x, z, s = 1) { if (furn('cone_tree', x, z, 0, -0.08, s)) return; add(world, new THREE.ConeGeometry(0.42 * s, 1.9 * s, 10), C.leafD, x, 1.0 * s, z); add(world, cyl(0.07 * s, 0.08 * s, 0.25 * s, 6), C.woodD, x, 0.05, z); }
   [[-10.4, -5.2, 1.1], [-10.6, -1.2, 1.0], [-6.2, -8.6, 1.15], [1.2, -8.8, 1.05], [7.6, -5.4, 1.0], [-9.9, 5.6, 0.95]].forEach(([x, z, s]) => roundTree(x, z, s));
   [[-11.2, 2.6, 1.0], [-8.2, -7.6, 0.9], [-2.6, -9.3, 1.0], [4.6, -7.8, 0.95], [9.2, -2.2, 0.85], [-8.6, 8.6, 0.85]].forEach(([x, z, s]) => coneTree(x, z, s));
   // 꽃 덤불
   function bush(x, z, s = 1, flower) {
+if (!furn('bush', x, z, x * 1.3, -0.1, s)) {
     add(world, ball(0.32 * s, 1), C.leaf, x, 0.2 * s, z); add(world, ball(0.24 * s, 1), C.leafD, x + 0.25 * s, 0.15 * s, z - 0.1 * s); add(world, ball(0.22 * s, 1), '#a3c4a8', x - 0.22 * s, 0.17 * s, z + 0.12 * s);
+}
     if (flower) for (let i = 0; i < 6; i++) { const a = i * 1.1; add(world, sph(0.055), flower, x + Math.cos(a) * 0.22 * s, 0.38 * s, z + Math.sin(a) * 0.2 * s); }
   }
   function flowers(x, z, n, r, cols) { for (let i = 0; i < n; i++) { const a = i * 2.4, d = r * Math.sqrt((i + 0.5) / n), px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
@@ -587,7 +655,7 @@ ob(4.35, 5.4, 3.1, 4.0); ob(4.25, 5.4, 7.0, 8.1); ob(2.7, 3.7, 7.25, 8.1); ob(0.
   flowers(-10.2, 4.0, 14, 0.7, [C.lav, C.white]); flowers(9.0, 0.6, 12, 0.6, [C.white, C.gold]);
   [[6.5, 5.3], [8.6, 9.0], [2.6, 10.6], [-3.6, 10.2], [-8.2, 6.6], [9.4, 4.6]].forEach(([x, z], i) => bush(x, z, 0.7, FL[i % 5]));
   // 대문 밖 디딤돌 길
-  for (let i = 0; i < 5; i++) add(world, cyl(0.26, 0.28, 0.05, 9), ['#ece8e8', '#dfd9e6', '#ebe2d6'][i % 3], 1.6 + Math.sin(i * 1.9) * 0.15, -0.06, 8.75 + i * 0.55);
+  for (let i = 0; i < 5; i++) { const x = 1.6 + Math.sin(i * 1.9) * 0.15, z = 8.75 + i * 0.55; if (!furn('stepping_stone', x, z, i * 1.3, -0.085)) add(world, cyl(0.26, 0.28, 0.05, 9), ['#ece8e8', '#dfd9e6', '#ebe2d6'][i % 3], x, -0.06, z); }
 }
 
 // ================= 조명 =================
