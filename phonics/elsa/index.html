@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elsa Phonics</title>
+<style>
+  body { margin:0; padding:16px; background:#f6f4ef; font-family:system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  main { max-width:640px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(72px, 1fr)); gap:10px; }
+  button { aspect-ratio:1; font-size:36px; font-weight:700; border:0; border-radius:14px; background:#3b6fd8; color:#fff; cursor:pointer; touch-action:manipulation; }
+  button:active { transform:scale(.94); background:#2c56ad; }
+</style>
+</head>
+<body>
+<main id="keys"></main>
+<script>
+const keys = document.getElementById("keys");
+for (const ch of "abcdefghijklmnopqrstuvwxyz") {
+  const audio = new Audio("sounds/" + ch + ".mp3");
+  audio.preload = "auto";
+  const btn = document.createElement("button");
+  btn.textContent = ch;
+  btn.onclick = () => { audio.currentTime = 0; audio.play(); };
+  keys.appendChild(btn);
+}
+</script>
+</body>
+</html>
