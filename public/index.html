@@ -26,7 +26,10 @@
   #toast { left: 50%; top: 60px; transform: translateX(-50%); background: rgba(58, 55, 57, .85); color: #fff8dc; padding: 8px 14px; border-radius: 10px; font-size: 13px; display: none; max-width: 86vw; text-align: center; }
   #bellBtn { left: 50%; bottom: 26px; transform: translateX(-50%); display: none; }
   #banner { left: 50%; top: 56px; transform: translateX(-50%); display: none; background: rgba(255, 252, 244, .97); border: 1.5px solid #b8a07a; border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
-  #banner button { margin-left: 8px; font-size: 13px; border: 1px solid #b8a07a; background: #fff; border-radius: 8px; padding: 4px 10px; }
+  #banner { color: #3a3436; }
+  #banner button { margin-left: 8px; font-size: 13px; border: 1px solid #b8a07a; background: #fff; color: #4a4038; border-radius: 8px; padding: 5px 12px; font-weight: 600; }
+  #banner button#inv { background: #5f9a7a; border-color: #4c8466; color: #fff; }
+  #bellBtn.off { opacity: .75; color: #7a6e60; }
   #hint { left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 12px; color: #6f6458; pointer-events: none; transition: opacity .6s; white-space: nowrap; }
   #login { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(237, 231, 214, .78); backdrop-filter: blur(2px); }
   #login .card { background: #fffcf4; border: 1.5px solid #b8a07a; border-radius: 16px; padding: 22px 24px; text-align: center; color: #5b5248; max-width: 86vw; box-shadow: 0 6px 24px rgba(90, 70, 40, .15); }
@@ -242,7 +245,7 @@ wall('x', 3, -6.5, -3, PART, [[...PD[4], 0, 9]]); door('x', 3, ...PD[4]);
 wall('z', -3, 3, 6.5, PART);
 // 방문: 경첩에서 열리는 문짝 (열린 쪽 방향 open, 처음엔 열림)
 const ROOMDOORS = [];
-[[0, 'z', -3, Math.PI / 2], [1, 'x', -3, -Math.PI / 2], [2, 'z', 3, -Math.PI / 2], [3, 'x', 3, Math.PI / 2], [4, 'x', 3, Math.PI / 2]].forEach(([i, axis, fixed, open]) => {
+[[0, 'z', -3, -Math.PI / 2], [1, 'x', -3, Math.PI / 2], [2, 'z', 3, Math.PI / 2], [3, 'x', 3, -Math.PI / 2], [4, 'x', 3, -Math.PI / 2]]  /* 방 안쪽으로 열림 */.forEach(([i, axis, fixed, open]) => {
   const [a, b] = PD[i], w = b - a, hinge = new THREE.Group(); hinge.userData.keep = true; world.add(hinge);
   if (axis === 'x') hinge.position.set(a, 0, fixed); else { hinge.position.set(fixed, 0, a); hinge.rotation.y = 0; }
   const pan = new THREE.Group(); hinge.add(pan); if (axis === 'z') pan.rotation.y = -Math.PI / 2; // 닫혔을 때 벽을 따라 놓이게
@@ -401,10 +404,10 @@ add(P, box(0.4, 0.05, 0.4), C.wood, 1.05, 0.45, -4.65); add(P, box(0.05, 0.45, 0
 ob(1.28, 1.92, -5.22, -4.08); ob(0.83, 1.27, -4.87, -4.43); regApp('mock', [0.45, -4.0], -Math.PI / 4, [1.5, 0.6, -4.65, 0.8, 1.2, 1.2]);
 TAG = 'english';
 // 영어 읽기: 바닥 방석 + 펼친 그림책 + 알파벳 블록
-add(P, cyl(0.42, 0.44, 0.14, 20), '#f3c9b6', -1.55, 0.07, -3.95); add(P, cyl(0.3, 0.32, 0.03, 20), C.mint, -1.55, 0.15, -3.95);
-const bookL = add(P, box(0.22, 0.02, 0.3), C.blue, -1.66, 0.19, -3.95); bookL.rotation.z = 0.15; const bookR = add(P, box(0.22, 0.02, 0.3), C.white, -1.44, 0.19, -3.95); bookR.rotation.z = -0.15;
-[[C.salmon, -0.95, -3.7], [C.lav, -0.82, -3.85], [C.gold, -0.9, -3.78]].forEach(([c, x, z], i) => add(P, box(0.13, 0.13, 0.13), c, x, 0.065 + (i === 2 ? 0.13 : 0), z));
-ob(-1.97, -1.13, -4.37, -3.53); regApp('english', [-1.55, -4.75], 0, [-1.55, 0.3, -3.95, 1.0, 0.6, 1.0]);
+add(P, cyl(0.42, 0.44, 0.14, 20), '#f3c9b6', -2.20, 0.07, -4.95); add(P, cyl(0.3, 0.32, 0.03, 20), C.mint, -2.20, 0.15, -4.95);
+const bookL = add(P, box(0.22, 0.02, 0.3), C.blue, -2.31, 0.19, -4.95); bookL.rotation.z = 0.15; const bookR = add(P, box(0.22, 0.02, 0.3), C.white, -2.09, 0.19, -4.95); bookR.rotation.z = -0.15;
+[[C.salmon, -1.60, -4.70], [C.lav, -1.47, -4.85], [C.gold, -1.55, -4.78]].forEach(([c, x, z], i) => add(P, box(0.13, 0.13, 0.13), c, x, 0.065 + (i === 2 ? 0.13 : 0), z));
+ob(-2.62, -1.38, -5.37, -4.53); regApp('english', [-1.4, -4.15], -Math.PI * 0.75, [-2.2, 0.3, -4.95, 1.0, 0.6, 1.0]); // 침대 옆
 plant(1.65, -6.6, 0.8); plant(-2.7, -3.4, 0.7);
 
 // ================= 거실 x -3~3, z -3~3 =================
@@ -948,7 +951,10 @@ async function answerBell(id, ok) {
   try { await rpc('house_answer', { bell: id, accept: ok }); toast(ok ? '손님을 초대했어요 (12시간 동안 들어올 수 있어요)' : '다음에 오라고 했어요'); } catch { toast('이미 다른 가족이 대답했어요'); }
   bellShown = null; setTimeout(pollBells, 300);
 }
+let canRing = true;
 async function loadGuestStatus() {
+  try { canRing = (await rpc('house_is_friend')) !== false; } catch { canRing = true; } // 함수가 아직 없으면 서버가 막음
+  $('bellBtn').classList.toggle('off', !canRing); $('bellBtn').textContent = canRing ? '초인종 누르기' : '친구만 초인종을 누를 수 있어요';
   try { const s = await rpc('house_guest_status'); guestUntil = s && s.status === 'invited' ? Date.parse(s.expires_at) : 0; } catch { guestUntil = 0; }
 }
 function watchGuest() {
@@ -963,11 +969,12 @@ function watchGuest() {
 $('bellBtn').onclick = async (e) => {
   e.stopPropagation();
   if (!LIVE) { store.set('bell', Date.now()); toast('딩동! 가족이 초대하면 들어갈 수 있어요', 3000); return; }
+  if (!canRing) { toast('스도쿠에서 친구로 등록된 사람만 초인종을 누를 수 있어요', 3500); return; }
   try {
     const r = await rpc('house_ring');
     if (r.status === 'invited' && Date.parse(r.expires_at) > Date.now()) { guestUntil = Date.parse(r.expires_at); refreshDoor(); toast('문이 열려 있어요. 들어오세요'); return; }
     toast('딩동! 가족이 초대하면 문이 열려요', 3000); watchGuest();
-  } catch { toast('초인종을 누르지 못했어요. 잠시 뒤에 다시 눌러 주세요'); }
+  } catch (err) { if (String(err && err.message).includes('not_friend')) { canRing = false; loadGuestStatus(); toast('스도쿠에서 친구로 등록된 사람만 초인종을 누를 수 있어요', 3500); } else toast('초인종을 누르지 못했어요. 잠시 뒤에 다시 눌러 주세요'); }
 };
 setInterval(pollBells, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pollBells(); });
