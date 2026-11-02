@@ -826,7 +826,7 @@ function loadGlb(kind) {
 }
 function rigFromGlb(src) {
   const m = src.clone(true);
-  m.traverse(o => { if (o.isMesh) { const map = o.material.map; o.material = new THREE.MeshToonMaterial(map ? { map, gradientMap: charGrad, emissive: 0x161412 } : { vertexColors: true, gradientMap: charGrad, emissive: 0x161412 }); o.castShadow = true; o.receiveShadow = true; } });
+  m.traverse(o => { if (o.isMesh) { const map = o.material.map; const vc = !!o.geometry.attributes.color; o.material = new THREE.MeshToonMaterial(map ? { map, gradientMap: charGrad, emissive: 0x161412 } : vc ? { vertexColors: true, gradientMap: charGrad, emissive: 0x161412 } : { color: o.material.color.clone(), gradientMap: charGrad, emissive: 0x161412 }); // 단색 재질(부리·눈·코)은 그 색 그대로 o.castShadow = true; o.receiveShadow = true; } });
   const J = {}; ['hip', 'head', 'armL', 'armR', 'legL', 'legR', 'tail'].forEach(n => { J[n] = m.getObjectByName(n); if (J[n]) J[n].userData.base = J[n].position.clone(); });
   m.scale.setScalar(0.92);
   return { model: m, J };
