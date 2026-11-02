@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {mock} from 'node:test';
 import {matchesWord,normalizeWord,startWordRecognition,recognitionConstructor} from '../src/lib/word-recognition.ts';
 assert.equal(recognitionConstructor(),undefined);
-for(const [heard,word] of [['APPLE.','apple'],[' apple! ','apple'],['pine apple','pineapple'],['water melon','watermelon']])assert.equal(matchesWord(heard,word),true);
+for(const [heard,word] of [['APPLE.','apple'],[' apple! ','apple'],['pine apple','pineapple'],['water melon','watermelon'],['blue berry','blueberry'],['Butter fly','butterfly'],['Kangaroo!','kangaroo']])assert.equal(matchesWord(heard,word),true);
+assert.equal(matchesWord('kanga roo','kangaroo'),false);
 for(const heard of ['',null,{},'banana','apple banana','an apple','apples','apple sauce','a'.repeat(121)])assert.equal(matchesWord(heard,'apple'),false);
 assert.equal(normalizeWord('  apple   banana '),'apple banana');
 class Fake {
