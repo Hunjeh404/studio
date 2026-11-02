@@ -80,12 +80,12 @@ export function target(id:string,accent:Accent) {
  return {...f,ipa:accent==='en-GB'?f.ipaGB:f.ipaUS};
 }
 export const themes = [
- {name:'작은 과일 정원',sub:'처음 만나는 작은 모험',base:'#aec8a1',wall:'#93b48b',leaf:'#8eaf83'},
- {name:'꽃이 핀 산책길',sub:'굽이굽이, 한 걸음 더',base:'#c1c5a0',wall:'#b8b793',leaf:'#b0b788'},
- {name:'복숭아빛 언덕',sub:'조금 더 넓어진 세상',base:'#d7bfa9',wall:'#c9aa95',leaf:'#b2bb8e'},
- {name:'시원한 강가',sub:'천천히, 또렷하게',base:'#aec9c5',wall:'#91b3ae',leaf:'#8fae9c'},
- {name:'라벤더 숲길',sub:'새로운 길을 찾아서',base:'#c4bcd0',wall:'#b3a5be',leaf:'#9fae9c'},
- {name:'황금빛 과수원',sub:'마지막 출구를 향해',base:'#cfbf91',wall:'#bdad78',leaf:'#9da97a'}
+ {name:'작은 과일 정원',sub:'처음 만나는 작은 모험'},
+ {name:'느긋한 농장',sub:'울타리 사이로 한 걸음 더'},
+ {name:'이끼 낀 숲',sub:'나무 사이 오솔길'},
+ {name:'강가와 연못',sub:'천천히, 또렷하게'},
+ {name:'햇살 바닷가',sub:'조금 더 넓어진 세상'},
+ {name:'비밀의 정글',sub:'마지막 출구를 향해'}
 ];
 function random(seed:number){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 export function stageData(stage:number){
