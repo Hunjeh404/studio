@@ -4,7 +4,8 @@
     "kaylastudio": {
       "hosting": {
         "studio": ["kaylastudio"],
-        "elsa-phonics": ["elsa-phonics"]
+        "elsa-phonics": ["elsa-phonics"],
+        "wordmaze": ["wordmaze"]
       }
     }
   }

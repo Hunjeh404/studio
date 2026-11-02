@@ -13,6 +13,12 @@
       "target": "elsa-phonics",
       "public": "phonics/elsa",
       "ignore": ["**/.*"]
+    },
+    {
+      "target": "wordmaze",
+      "public": "wordmaze/dist",
+      "ignore": ["**/.*"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
     }
   ]
 }
