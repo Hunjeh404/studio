@@ -1,3 +1,11 @@
 {
-  "projects": { "default": "kaylastudio" }
+  "projects": { "default": "kaylastudio" },
+  "targets": {
+    "kaylastudio": {
+      "hosting": {
+        "studio": ["kaylastudio"],
+        "elsa-phonics": ["elsa-phonics"]
+      }
+    }
+  }
 }
