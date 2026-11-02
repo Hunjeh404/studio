@@ -1,0 +1,5 @@
+import {recordKey,type Run,type RecordRow} from './engine.ts';
+const key='wordmaze-single-records-v2';
+export function readRecords():Record<string,RecordRow>{try{const raw=JSON.parse(localStorage.getItem(key)||'{}');if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};return Object.fromEntries(Object.entries(raw).filter(([,v])=>!!v&&typeof v==='object'&&typeof (v as RecordRow).name==='string'&&Number.isFinite((v as RecordRow).timeMs)&&(v as RecordRow).timeMs>=0)) as Record<string,RecordRow>;}catch{return {};}}
+export function localRecords(stage:number,accent:Run['accent'],animal:string):RecordRow[]{const row=readRecords()[recordKey(stage,accent,animal)];return row?[row]:[];}
+export function saveLocal(run:Run,name:string){if(!run.complete)throw Error('완료되지 않은 도전입니다.');const rows=readRecords(),k=recordKey(run.stage,run.accent,run.animal),previous=rows[k];const newBest=!!previous&&run.elapsed<previous.timeMs;if(!previous||newBest){rows[k]={name,timeMs:run.elapsed,animal:run.animal};localStorage.setItem(key,JSON.stringify(rows));}return{newBest,record:!previous||newBest};}
