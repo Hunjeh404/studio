@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {stageData,target} from '../src/lib/game.ts';
+import {readFileSync,readdirSync} from 'node:fs';
+import {stageData,target,words,shuffledWords,isStageOrder} from '../src/lib/game.ts';
 let cases=0;
 for(let stage=1;stage<=6;stage++){
  const game=stageData(stage),{n,cells,route,checkpoints}=game;
@@ -23,8 +24,19 @@ for(let stage=1;stage<=6;stage++){
   assert.equal(cells[a].walls[direction],false,'Animated movement cannot cross a wall');
  }
  assert.equal(new Set(checkpoints.map(c=>c.cell)).size,checkpoints.length);
- for(const checkpoint of checkpoints){assert.equal(route[checkpoint.routeIndex],checkpoint.cell);for(const accent of ['en-GB','en-US'])assert.ok(target(checkpoint.id,accent).ipa);}
+ for(const checkpoint of checkpoints)assert.equal(route[checkpoint.routeIndex],checkpoint.cell);
+ assert.equal(game.words.length,checkpoints.length);
+ for(const id of game.words)for(const accent of ['en-GB','en-US'])assert.ok(target(id,accent).ipa);
+ const allowed=stage<=2?[1]:stage<=4?[1,2]:[2,3];
+ for(const id of game.words)assert.ok(allowed.includes(target(id,'en-GB').tier),`stage ${stage} must not use ${id}`);
+ for(let k=0;k<20;k++){const order=shuffledWords(stage);assert.ok(isStageOrder(stage,order));}
+ assert.equal(isStageOrder(stage,[...game.words.slice(1),'zzz']),false);assert.equal(isStageOrder(stage,game.words.slice(1)),false);
  cases++;
 }
+assert.equal(words.filter(w=>w.kind==='fruit').length,20);assert.equal(words.filter(w=>w.kind==='animal').length,30);assert.equal(new Set(words.map(w=>w.id)).size,50);
+for(const w of words)assert.ok([1,2,3,4,5,6].some(s=>stageData(s).words.includes(w.id)),`${w.id} must appear in a stage`);
+const migration=readdirSync(new URL('../supabase/migrations/',import.meta.url)).sort().filter(f=>f.includes('words')).at(-1);
+const sql=readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8');
+for(let stage=1;stage<=6;stage++){const m=sql.match(new RegExp(`set targets='([^']+)'::jsonb where stage=${stage};`));assert.ok(m,`stage ${stage} missing in ${migration}`);assert.deepEqual(JSON.parse(m[1]),stageData(stage).words,`server words for stage ${stage} must match game.ts`);}
 assert.throws(()=>stageData(0));assert.throws(()=>stageData(7));
-console.log(`${cases} combinations passed: connected mazes, valid routes, reproducible layouts, distinct checkpoints and valid pronunciation targets.`);
+console.log(`${cases} combinations passed: connected mazes, valid routes, reproducible layouts, distinct checkpoints, stage word tiers, shuffled orders and all 50 words used.`);

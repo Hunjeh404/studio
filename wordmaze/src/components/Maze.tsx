@@ -5,10 +5,12 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {SVGRenderer} from 'three/addons/renderers/SVGRenderer.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {stageData,target} from '../lib/game';
-type Props={stage:number;animal:string;progress:number;view:number;onReady:(v:boolean)=>void};
-export default function Maze({stage,animal,progress,view,onReady}:Props){
- const host=useRef<HTMLDivElement>(null),update=useRef<((p:number)=>void)|null>(null),progressRef=useRef(progress),readyRef=useRef(onReady);const [error,setError]=useState('');
- progressRef.current=progress;readyRef.current=onReady;
+type Props={stage:number;words:string[];animal:string;progress:number;view:number;onReady:(v:boolean)=>void};
+export default function Maze({stage,words,animal,progress,view,onReady}:Props){
+ const host=useRef<HTMLDivElement>(null),update=useRef<((p:number)=>void)|null>(null),updateWords=useRef<((ids:string[])=>void)|null>(null),wordsRef=useRef(words),progressRef=useRef(progress),readyRef=useRef(onReady);const [error,setError]=useState('');
+ progressRef.current=progress;readyRef.current=onReady;wordsRef.current=words;
+ const wordKey=words.join();
+ useEffect(()=>{updateWords.current?.(wordsRef.current);},[wordKey]);
  useEffect(()=>{update.current?.(progress);},[progress]);
  useEffect(()=>{
   if(!host.current)return;let alive=true,frame=0;setError('');readyRef.current(false);
@@ -38,11 +40,23 @@ export default function Maze({stage,animal,progress,view,onReady}:Props){
    else if(id==='pineapple'){ball(g,.2,mat,0,.2,0,.8,1.3,.8);for(let i=0;i<5;i++){const m=new T.Mesh(new T.ConeGeometry(.055,.25,5),green);m.position.set(Math.cos(i)*.05,.47,Math.sin(i)*.05);m.rotation.z=(i-2)*.15;g.add(m);}}
    else if(id==='watermelon'||id==='melon'){ball(g,.24,mat,0,.20,0,1,.85,1);if(id==='watermelon'){for(let k=0;k<4;k++){const tor=new T.Mesh(new T.TorusGeometry(.235,.013,5,24),material('#617f64'));tor.rotation.y=k*Math.PI/4;tor.position.y=.2;g.add(tor);}}}
    else if(id==='strawberry'){const m=new T.Mesh(new T.ConeGeometry(.17,.33,14),mat);m.rotation.z=Math.PI;m.position.y=.15;g.add(m);for(let i=0;i<5;i++)ball(g,.055,green,Math.cos(i*1.26)*.08,.32,Math.sin(i*1.26)*.08,1,.35,1);}
-   else {ball(g,.21,mat,0,.19,0,id==='lemon'?1.25:1,id==='peach'?.9:1,1);}
-   if(!['banana','cherry','pineapple','watermelon','melon','strawberry'].includes(id)){const stem=new T.Mesh(new T.CylinderGeometry(.015,.02,.12,6),brown);stem.position.y=id==='pear'?.47:.44;g.add(stem);ball(g,.07,green,.07,stem.position.y-.03,0,1.5,.3,.7);}
+   else if(id==='blueberry'){ball(g,.12,mat,-.1,.13,0);ball(g,.12,mat,.1,.13,.04);ball(g,.12,mat,0,.3,-.02);}
+   else if(id==='coconut'){ball(g,.22,mat,0,.21,0,1,.95,1);}
+   else if(id==='tomato'){ball(g,.21,mat,0,.18,0,1,.82,1);for(let i=0;i<5;i++)ball(g,.06,green,Math.cos(i*1.26)*.07,.34,Math.sin(i*1.26)*.07,1.3,.3,.6);}
+   else if(id==='olive'){ball(g,.13,mat,0,.15,0,.85,1.2,.85);}
+   else if(id==='avocado'){ball(g,.18,mat,0,.17,0,1,1.05,1);ball(g,.12,mat,0,.33,0,.85,1.15,.85);}
+   else {ball(g,.21,mat,0,.19,0,id==='lemon'||id==='lime'?1.25:1,id==='peach'?.9:1,1);}
+   if(!['banana','cherry','pineapple','watermelon','melon','strawberry','blueberry','coconut','tomato'].includes(id)){const stem=new T.Mesh(new T.CylinderGeometry(.015,.02,.12,6),brown);stem.position.y=id==='pear'?.47:.44;g.add(stem);ball(g,.07,green,.07,stem.position.y-.03,0,1.5,.3,.7);}
    return g;
   };
-  const markers=game.checkpoints.map((cp,i)=>{const p=point(cp.cell),g=new T.Group();g.position.copy(p);g.position.y=.16;const fruit=makeFruit(cp.id);
+  // Animals are shown as their emoji on a small round stand; fruits keep their 3D shapes.
+  const makeAnimal=(id:string)=>{const g=new T.Group(),f=target(id,'en-GB');const stand=new T.Mesh(new T.CylinderGeometry(.2,.22,.06,software?10:20),material(f.color));stand.position.y=.03;stand.castShadow=true;g.add(stand);
+   if(software){ball(g,.17,material(f.color),0,.24,0);return g;}
+   const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const ctx=canvas.getContext('2d');if(ctx){ctx.font='100px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.icon,64,70);}
+   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true}));sprite.scale.setScalar(.6);sprite.position.y=.36;g.add(sprite);return g;};
+  const makeItem=(id:string)=>target(id,'en-GB').kind==='animal'?makeAnimal(id):makeFruit(id);
+  const dispose=(root:T.Object3D)=>root.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Sprite){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{Object.values(m).forEach(v=>{if(v instanceof T.Texture)v.dispose();});m.dispose();});}});
+  const markers=game.checkpoints.map((cp,i)=>{const p=point(cp.cell),g=new T.Group();g.position.copy(p);g.position.y=.16;const fruit=makeItem(wordsRef.current[i]);
    g.add(fruit);scene.add(g);const ring=new T.Mesh(new T.TorusGeometry(.35,.023,6,36),material('#d9b768'));ring.rotation.x=-Math.PI/2;ring.position.copy(p);ring.position.y=.17;scene.add(ring);return{g,ring,fruit,index:i,baseY:g.position.y};});
   const start=point(0),end=point(n*n-1);const flagPole=new T.Mesh(new T.CylinderGeometry(.02,.02,.8,8),dark);flagPole.position.set(end.x,.51,end.z);scene.add(flagPole);const flag=new T.Mesh(new T.PlaneGeometry(.34,.22),new T.MeshStandardMaterial({color:'#dfaa68',side:T.DoubleSide}));flag.position.set(end.x+.17,.81,end.z);scene.add(flag);
   const hero=new T.Group();hero.position.copy(start);hero.position.y=.13;scene.add(hero);let joints:T.Object3D[]=[],heroReady=false,routePos=0,walkTo=0,walkIndex=1,was=0,dirty=true;
@@ -50,13 +64,14 @@ export default function Maze({stage,animal,progress,view,onReady}:Props){
    if(v<was){hero.position.copy(point(game.route[targetIndex]));hero.position.y=.13;routePos=targetIndex;walkIndex=targetIndex+1;}walkTo=targetIndex;was=v;
    markers.forEach((m,i)=>{m.g.visible=i>=v;m.ring.visible=i===v;});
   };update.current=placeProgress;placeProgress(progressRef.current);
+  updateWords.current=ids=>{if(ids.length!==markers.length)return;dirty=true;markers.forEach((m,i)=>{m.g.remove(m.fruit);dispose(m.fruit);m.fruit=makeItem(ids[i]);m.g.add(m.fruit);});};
   const modelAbort=new AbortController();fetch(`${import.meta.env.BASE_URL}chars/${animal}.js`,{signal:modelAbort.signal}).then(r=>{if(!r.ok)throw Error();return r.text();}).then(source=>{if(!alive)return;const match=source.match(/^export default ['"]([A-Za-z0-9+\/=]+)['"];?\s*$/);if(!match)throw Error();const bytes=Uint8Array.from(atob(match[1]),c=>c.charCodeAt(0));new GLTFLoader().parse(bytes.buffer,'',gltf=>{if(!alive)return;const model=gltf.scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model);const height=bounds.max.y-bounds.min.y;const scale=.86/height;model.scale.setScalar(scale);model.position.y=-bounds.min.y*scale;model.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;o.receiveShadow=true;if(software){const old=o.material as T.MeshStandardMaterial;let hasColors=!!o.geometry.attributes.color;const map=old.map;if(map?.image){try{const image=map.image;const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data,uv=o.geometry.attributes.uv,colors=new Float32Array(uv.count*3),color=new T.Color();for(let i=0;i<uv.count;i++){const x=Math.max(0,Math.min(image.width-1,Math.floor(uv.getX(i)*image.width))),y=Math.max(0,Math.min(image.height-1,Math.floor(uv.getY(i)*image.height))),j=(y*image.width+x)*4;color.setRGB(pixels[j]/255,pixels[j+1]/255,pixels[j+2]/255,T.SRGBColorSpace);colors.set([color.r,color.g,color.b],i*3);}o.geometry.setAttribute('color',new T.BufferAttribute(colors,3));hasColors=true;}catch{}}o.material=new T.MeshLambertMaterial({color:old.color,vertexColors:hasColors,side:old.side});}}});hero.add(model);dirty=true;joints=['legL','legR','armL','armR'].map(name=>model.getObjectByName(name)).filter(Boolean) as T.Object3D[];heroReady=true;readyRef.current(true);},()=>{if(alive)setError('동물친구를 불러오지 못했습니다. 화면을 새로고침해 주세요.');});}).catch(()=>{if(alive)setError('동물친구를 불러오지 못했습니다. 화면을 새로고침해 주세요.');});
   const resize=()=>{dirty=true;const w=el.clientWidth,h=el.clientHeight;const aspect=w/h;const worldWidth=(n*spacing+1.4)*1.45;const frustum=Math.max((n*spacing+1.3)*1.16,worldWidth/aspect);camera.left=-frustum*aspect/2;camera.right=frustum*aspect/2;camera.top=frustum/2;camera.bottom=-frustum/2;camera.updateProjectionMatrix();renderer.setSize(w,h);};const observer=new ResizeObserver(resize);observer.observe(el);resize();
   const clock=new T.Clock();let lastDraw=0;function draw(){if(!alive)return;frame=requestAnimationFrame(draw);const now=performance.now();if(software&&now-lastDraw<90)return;lastDraw=now;const dt=Math.min(clock.getDelta(),software?.14:.05),time=clock.elapsedTime;let moving=false;
    if(heroReady&&routePos<walkTo){const dest=point(game.route[walkIndex]);dest.y=.13;const delta=dest.clone().sub(hero.position),distance=delta.length();hero.rotation.y=Math.atan2(delta.x,delta.z);const step=dt*3.5;moving=true;if(distance<=step){hero.position.copy(dest);routePos=walkIndex;walkIndex++;}else hero.position.addScaledVector(delta.normalize(),step);}
    joints.forEach((j,i)=>{j.rotation.x=moving?Math.sin(time*15+(i%2)*Math.PI)*.42:Math.sin(time*2)*.025;});
    if(!software)markers.forEach(m=>{if(!m.g.visible)return;m.g.position.y=m.baseY+Math.sin(time*2+m.index)*.035;m.ring.scale.setScalar(1+Math.sin(time*3)*.07);});if(!software||dirty||moving){renderer.render(scene,camera);dirty=false;}}
-  draw();return()=>{alive=false;modelAbort.abort();cancelAnimationFrame(frame);observer.disconnect();update.current=null;scene.traverse(o=>{if(o instanceof T.Mesh){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{Object.values(m).forEach(v=>{if(v instanceof T.Texture)v.dispose();});m.dispose();});}});if(renderer instanceof T.WebGLRenderer){renderer.dispose();renderer.forceContextLoss();}renderer.domElement.remove();};
+  draw();return()=>{alive=false;modelAbort.abort();cancelAnimationFrame(frame);observer.disconnect();update.current=null;updateWords.current=null;dispose(scene);if(renderer instanceof T.WebGLRenderer){renderer.dispose();renderer.forceContextLoss();}renderer.domElement.remove();};
  },[stage,animal,view]);
- return <div className="maze-host" ref={host} role="img" aria-label={`과일 아이소메트릭 3D 미로, ${progress}개 통과`}>{error&&<div className="maze-error">{error}</div>}</div>;
+ return <div className="maze-host" ref={host} role="img" aria-label={`과일·동물 아이소메트릭 3D 미로, ${progress}개 통과`}>{error&&<div className="maze-error">{error}</div>}</div>;
 }

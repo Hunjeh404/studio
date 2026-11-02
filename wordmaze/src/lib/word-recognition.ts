@@ -3,9 +3,11 @@ export function normalizeWord(value:unknown):string {
  if(typeof value!=='string'||value.length>120)return '';
  return value.normalize('NFKC').toLowerCase().replace(/[.,!?;:。！？]/g,'').trim().replace(/\s+/g,' ');
 }
+// Compound words the recognizer may return as two words.
+const splitWords=new Set(['pineapple','watermelon','blueberry','butterfly']);
 export function matchesWord(transcript:unknown,target:string):boolean {
  const heard=normalizeWord(transcript);
- return heard!==''&&(heard===target||(target==='pineapple'&&heard==='pine apple')||(target==='watermelon'&&heard==='water melon'));
+ return heard!==''&&(heard===target||heard.replace(/ /g,'')===target&&splitWords.has(target));
 }
 export interface RecognitionResult {isFinal:boolean;0?:{transcript:string};}
 export interface RecognitionEvent {results:ArrayLike<RecognitionResult>;}

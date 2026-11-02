@@ -7,7 +7,7 @@ begin
  insert into wordmaze_private.players(user_id,name,balance) values(a,'검증A',1000),(b,'검증B',100);
  insert into wordmaze_private.inventory(user_id,animal) select a,id from wordmaze_private.animals;
  insert into wordmaze_private.inventory(user_id,animal) values(b,'cat');
- insert into wordmaze_private.records(user_id,stage,accent,animal,time_ms,name,version) select a,1,'en-GB',id,1000000,'검증A','wordmaze-browser-v2' from wordmaze_private.animals where id<>'cat';
+ insert into wordmaze_private.records(user_id,stage,accent,animal,time_ms,name,version) select a,1,'en-GB',id,1000000,'검증A','wordmaze-browser-v3' from wordmaze_private.animals where id<>'cat';
  perform set_config('wordmaze.test_a',a::text,true);perform set_config('wordmaze.test_b',b::text,true);
  perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated')::text,true);
 end $$;
@@ -19,9 +19,11 @@ begin
  if has_function_privilege('anon','public.wordmaze_api(text,jsonb)','EXECUTE') then raise exception 'anonymous RPC access leak';end if;
  d:=public.wordmaze_api('bootstrap');if jsonb_array_length(d->'player'->'owned')<>12 then raise exception 'inventory bootstrap';end if;
  foreach a in array array['cat','bear','rabbit','dog','tiger','penguin','poodle','siamese','calico','lioness','lion','otter'] loop
-  d:=public.wordmaze_api('equip',jsonb_build_object('animal',a));d:=public.wordmaze_api('start','{"stage":1,"accent":"en-GB"}');run_id:=d->'run'->>'id';other_id:=run_id;
-  -- The expected stage sequence is fixed, not supplied by the client.
-  words:='["pear","apple","peach","lemon","strawberry","orange"]'::jsonb;i:=0;expected_credit:=0;
+  d:=public.wordmaze_api('equip',jsonb_build_object('animal',a));d:=public.wordmaze_api('start',jsonb_build_object('stage',1,'accent','en-GB','order',case when a='cat' then '["duck","pig","dog","cat","banana","apple"]'::jsonb else '["apple","apple","cat","dog","pig","duck"]'::jsonb end));run_id:=d->'run'->>'id';other_id:=run_id;
+  -- The word set is fixed by the server; a valid client order is kept, anything else is replaced by a server shuffle.
+  words:=d->'run'->'targets';
+  if a='cat' and words<>'["duck","pig","dog","cat","banana","apple"]'::jsonb then raise exception 'valid order not kept %',words;end if;
+  if (select array_agg(x order by x) from jsonb_array_elements_text(words) x)<>array['apple','banana','cat','dog','duck','pig'] then raise exception 'stage word set changed %',words;end if;i:=0;expected_credit:=0;
   if a='bear' then d:=public.wordmaze_api('ability',jsonb_build_object('id',run_id,'progress',0));if (d->'run'->>'pauseMs')::integer<>5000 then raise exception 'bear pause';end if;d:=public.wordmaze_api('ability',jsonb_build_object('id',run_id,'progress',0));perform pg_sleep(5.05);end if;
   if a='rabbit' then d:=public.wordmaze_api('ability',jsonb_build_object('id',run_id,'progress',0));i:=1;end if;
   if a='lion' then begin perform public.wordmaze_api('ability',jsonb_build_object('id',run_id,'progress',0));raise exception 'lion early ability allowed';exception when others then if sqlerrm='lion early ability allowed' then raise;end if;end;end if;

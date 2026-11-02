@@ -14,4 +14,6 @@ export const characters=[
  {id:'otter',name:'해달',icon:'🦦',price:100,skill:'긴 단어 미끄럼',description:'6글자 이상 단어를 처음 맞히면 3초를 줄여 드립니다.'},
 ] as const;
 export const character=(id:string)=>characters.find(a=>a.id===id)||characters[0];
-export const syllables:Record<string,string>={apple:'ap · ple',banana:'ba · na · na',grape:'grape',orange:'or · ange',pear:'pear',peach:'peach',cherry:'cher · ry',lemon:'lem · on',kiwi:'ki · wi',melon:'mel · on',strawberry:'straw · ber · ry',pineapple:'pine · ap · ple',watermelon:'wa · ter · mel · on',mango:'man · go'};
+export const syllables:Record<string,string>={apple:'ap · ple',banana:'ba · na · na',grape:'grape',orange:'or · ange',pear:'pear',peach:'peach',cherry:'cher · ry',lemon:'lem · on',kiwi:'ki · wi',melon:'mel · on',strawberry:'straw · ber · ry',pineapple:'pine · ap · ple',watermelon:'wa · ter · mel · on',mango:'man · go',coconut:'co · co · nut',tomato:'to · ma · to',olive:'ol · ive',lime:'lime',blueberry:'blue · ber · ry',avocado:'av · o · ca · do',
+ cat:'cat',dog:'dog',pig:'pig',cow:'cow',duck:'duck',fish:'fish',bee:'bee',fox:'fox',owl:'owl',bat:'bat',monkey:'mon · key',panda:'pan · da',koala:'ko · a · la',zebra:'ze · bra',tiger:'ti · ger',whale:'whale',snake:'snake',horse:'horse',sheep:'sheep',mouse:'mouse',
+ frog:'frog',turtle:'tur · tle',dolphin:'dol · phin',giraffe:'gi · raffe',squirrel:'squir · rel',octopus:'oc · to · pus',elephant:'el · e · phant',butterfly:'but · ter · fly',crocodile:'croc · o · dile',kangaroo:'kan · ga · roo'};
