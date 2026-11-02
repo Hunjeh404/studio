@@ -794,7 +794,7 @@ function sizeTargets() {
 let tw = 1, th = 1;
 function lineWidth() { // 확대(2.6배 이상)에서 지금 굵기, 축소할수록 가늘게
   const pr = renderer.getPixelRatio(), full = 1.1 * Math.max(1, pr * 0.85), lw = full * THREE.MathUtils.clamp(zoom / 2.6, 0.35, 1);
-  const w = Math.max(1, lw); postMat.uniforms.px.value.set(w / tw, w / th); postMat.uniforms.ink.value = Math.min(1, lw);
+  const w = Math.max(1, Math.round(lw)); postMat.uniforms.px.value.set(w / tw, w / th); // 이웃 픽셀 간격은 정수로 (소수면 선이 두 겹으로 갈라짐) postMat.uniforms.ink.value = Math.min(1, lw);
 }
 function renderFrame() {
   scene.background = new THREE.Color('#ede7d6');
