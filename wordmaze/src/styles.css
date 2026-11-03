@@ -12,3 +12,10 @@
 
 /* Captions under the board were removed; pull the word card up close to the friend chip and reset button. */
 .speech-card{margin-top:-28px}@media(max-width:600px){.speech-card{margin-top:-20px}}
+
+/* Difficulty picker in the stage dialog and animal tabs in the records dialog. */
+.difficulty-switch{margin-top:18px}.difficulty-switch button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}.difficulty-switch small{font-size:9px;opacity:.8}
+.board-tabs{display:flex;gap:6px;overflow-x:auto;margin:14px 0 6px;padding-bottom:4px;scrollbar-width:none}.board-tabs::-webkit-scrollbar{display:none}
+.board-tabs button{flex:none;display:flex;align-items:center;gap:4px;border:1px solid #e1e4d6;background:#f6f5ea;border-radius:999px;padding:6px 10px;font-size:11px;color:#8d957f;white-space:nowrap}
+.board-tabs button span{font-size:10px}.board-tabs .on{background:#e6eddc;border-color:#b9cbaa;color:#5f7a5c}
+.record-animal{font-size:16px;line-height:1}
