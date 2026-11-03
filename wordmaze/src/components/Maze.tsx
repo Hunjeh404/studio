@@ -5,19 +5,22 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {SVGRenderer} from 'three/addons/renderers/SVGRenderer.js';
 import {stageData,target} from '../lib/game';
 import {buildStageArt} from './stage-art';
+// Default isometric view; drag changes azimuth/elevation, the reset button (view counter) restores this.
+const AZ0=Math.PI/4,EL0=Math.asin(12/Math.sqrt(432)),DIST=Math.sqrt(432),EL_MIN=.3,EL_MAX=1.45;
 type Props={stage:number;words:string[];animal:string;progress:number;view:number;onReady:(v:boolean)=>void};
 export default function Maze({stage,words,animal,progress,view,onReady}:Props){
- const host=useRef<HTMLDivElement>(null),update=useRef<((p:number)=>void)|null>(null),updateWords=useRef<((ids:string[])=>void)|null>(null),wordsRef=useRef(words),progressRef=useRef(progress),zoomRef=useRef(1),readyRef=useRef(onReady);const [error,setError]=useState('');
+ const host=useRef<HTMLDivElement>(null),update=useRef<((p:number)=>void)|null>(null),updateWords=useRef<((ids:string[])=>void)|null>(null),wordsRef=useRef(words),progressRef=useRef(progress),zoomRef=useRef(1),orbitRef=useRef({az:AZ0,el:EL0}),resetView=useRef<(()=>void)|null>(null),firstView=useRef(true),readyRef=useRef(onReady);const [error,setError]=useState('');
  progressRef.current=progress;readyRef.current=onReady;wordsRef.current=words;
  const wordKey=words.join();
  useEffect(()=>{updateWords.current?.(wordsRef.current);},[wordKey]);
  useEffect(()=>{update.current?.(progress);},[progress]);
+ useEffect(()=>{if(firstView.current){firstView.current=false;return;}orbitRef.current={az:AZ0,el:EL0};zoomRef.current=1;resetView.current?.();},[view]);
  useEffect(()=>{
   if(!host.current)return;let alive=true,frame=0;setError('');readyRef.current(false);
   let renderer:T.WebGLRenderer|SVGRenderer;let software=false;try{renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});}catch{renderer=new SVGRenderer();renderer.setQuality('high');software=true;}
   const el=host.current;el.appendChild(renderer.domElement);if(renderer instanceof T.WebGLRenderer){renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.75));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;}else renderer.setClearColor(new T.Color('#f6f3e9'),0);
   const scene=new T.Scene(),game=stageData(stage),n=game.n,spacing=1.12,half=(n-1)*spacing/2;
-  const camera=new T.OrthographicCamera(-6,6,5,-5,.1,100),angle=Math.PI/4+view*Math.PI/2;
+  const camera=new T.OrthographicCamera(-6,6,5,-5,.1,100),angle=AZ0;
   camera.position.set(Math.cos(angle)*12,12,Math.sin(angle)*12);camera.lookAt(0,.2,0);
   if(software)scene.add(new T.AmbientLight('#fff9ec',.85));scene.add(new T.HemisphereLight(0xfffcf0,0xb2a995,2.8));const sun=new T.DirectionalLight(0xfff4dd,software?.6:3.3);sun.position.set(-5,10,7);sun.castShadow=true;sun.shadow.mapSize.set(1536,1536);sun.shadow.camera.left=-10;sun.shadow.camera.right=10;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.03;sun.shadow.bias=-.0001;sun.shadow.radius=4;scene.add(sun);
   const material=(color:T.ColorRepresentation)=>new T.MeshStandardMaterial({color,roughness:.92});
@@ -60,23 +63,25 @@ export default function Maze({stage,words,animal,progress,view,onReady}:Props){
   updateWords.current=ids=>{if(ids.length!==markers.length)return;dirty=true;markers.forEach((m,i)=>{m.g.remove(m.fruit);dispose(m.fruit);m.fruit=makeItem(ids[i]);m.g.add(m.fruit);});};
   const modelAbort=new AbortController();fetch(`${import.meta.env.BASE_URL}chars/${animal}.js`,{signal:modelAbort.signal}).then(r=>{if(!r.ok)throw Error();return r.text();}).then(source=>{if(!alive)return;const match=source.match(/^export default ['"]([A-Za-z0-9+\/=]+)['"];?\s*$/);if(!match)throw Error();const bytes=Uint8Array.from(atob(match[1]),c=>c.charCodeAt(0));new GLTFLoader().parse(bytes.buffer,'',gltf=>{if(!alive)return;const model=gltf.scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model);const height=bounds.max.y-bounds.min.y;const scale=.86/height;model.scale.setScalar(scale);model.position.y=-bounds.min.y*scale;model.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;o.receiveShadow=true;if(software){const old=o.material as T.MeshStandardMaterial;let hasColors=!!o.geometry.attributes.color;const map=old.map;if(map?.image){try{const image=map.image;const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data,uv=o.geometry.attributes.uv,colors=new Float32Array(uv.count*3),color=new T.Color();for(let i=0;i<uv.count;i++){const x=Math.max(0,Math.min(image.width-1,Math.floor(uv.getX(i)*image.width))),y=Math.max(0,Math.min(image.height-1,Math.floor(uv.getY(i)*image.height))),j=(y*image.width+x)*4;color.setRGB(pixels[j]/255,pixels[j+1]/255,pixels[j+2]/255,T.SRGBColorSpace);colors.set([color.r,color.g,color.b],i*3);}o.geometry.setAttribute('color',new T.BufferAttribute(colors,3));hasColors=true;}catch{}}o.material=new T.MeshLambertMaterial({color:old.color,vertexColors:hasColors,side:old.side});}}});hero.add(model);dirty=true;joints=['legL','legR','armL','armR'].map(name=>model.getObjectByName(name)).filter(Boolean) as T.Object3D[];heroReady=true;readyRef.current(true);},()=>{if(alive)setError('동물친구를 불러오지 못했습니다. 화면을 새로고침해 주세요.');});}).catch(()=>{if(alive)setError('동물친구를 불러오지 못했습니다. 화면을 새로고침해 주세요.');});
   // Zoom (pinch, trackpad or mouse wheel) goes from the full-board view (1) up to 3x and keeps the hero centred.
-  const offset=camera.position.clone(),focus=new T.Vector3();let zoom=zoomRef.current;
-  const aim=()=>{const t=Math.min(1,(zoom-1)*1.5);focus.set(hero.position.x*t,.2,hero.position.z*t);camera.position.copy(focus).add(offset);camera.lookAt(focus);if(camera.zoom!==zoom){camera.zoom=zoom;camera.updateProjectionMatrix();}};
+  // One-finger / mouse drag on the maze turns it (left-right) and tilts it (up-down).
+  const offset=new T.Vector3(),focus=new T.Vector3();let zoom=zoomRef.current;
+  const aim=()=>{const {az,el:tilt}=orbitRef.current;offset.set(Math.cos(az)*Math.cos(tilt)*DIST,Math.sin(tilt)*DIST,Math.sin(az)*Math.cos(tilt)*DIST);const t=Math.min(1,(zoom-1)*1.5);focus.set(hero.position.x*t,.2,hero.position.z*t);camera.position.copy(focus).add(offset);camera.lookAt(focus);if(camera.zoom!==zoom){camera.zoom=zoom;camera.updateProjectionMatrix();}};
   const setZoom=(z:number)=>{zoom=Math.min(3,Math.max(1,z));zoomRef.current=zoom;dirty=true;};
   const onWheel=(e:WheelEvent)=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.0015));};
-  const touches=new Map<number,{x:number;y:number}>();let pinch:{d:number;z:number}|null=null;
+  const pad=el.parentElement||el;resetView.current=()=>{zoom=1;dirty=true;};
+  const touches=new Map<number,{x:number;y:number}>();let pinch:{d:number;z:number}|null=null,drag:{x:number;y:number;az:number;el:number}|null=null;
   const spread=()=>{const [a,b]=[...touches.values()];return Math.hypot(a.x-b.x,a.y-b.y);};
-  const onDown=(e:PointerEvent)=>{touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(touches.size===2)pinch={d:spread(),z:zoom};};
-  const onMove=(e:PointerEvent)=>{if(!touches.has(e.pointerId))return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pinch&&touches.size===2&&pinch.d>0)setZoom(pinch.z*spread()/pinch.d);};
-  const onUp=(e:PointerEvent)=>{touches.delete(e.pointerId);if(touches.size<2)pinch=null;};
+  const onDown=(e:PointerEvent)=>{touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(touches.size===1&&el.contains(e.target as Node)){drag={x:e.clientX,y:e.clientY,...orbitRef.current};try{pad.setPointerCapture(e.pointerId);}catch{}}if(touches.size===2){drag=null;pinch={d:spread(),z:zoom};}};
+  const onMove=(e:PointerEvent)=>{if(!touches.has(e.pointerId))return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pinch&&touches.size===2&&pinch.d>0)setZoom(pinch.z*spread()/pinch.d);else if(drag&&touches.size===1){orbitRef.current={az:drag.az+(e.clientX-drag.x)*.008,el:Math.min(EL_MAX,Math.max(EL_MIN,drag.el+(e.clientY-drag.y)*.006))};dirty=true;}};
+  const onUp=(e:PointerEvent)=>{touches.delete(e.pointerId);if(touches.size<2)pinch=null;if(!touches.size)drag=null;};
   const noGesture=(e:Event)=>e.preventDefault();
-  const pad=el.parentElement||el;pad.addEventListener('wheel',onWheel,{passive:false});pad.addEventListener('pointerdown',onDown);pad.addEventListener('pointermove',onMove);pad.addEventListener('pointerup',onUp);pad.addEventListener('pointercancel',onUp);pad.addEventListener('gesturestart',noGesture);
+  pad.addEventListener('wheel',onWheel,{passive:false});pad.addEventListener('pointerdown',onDown);pad.addEventListener('pointermove',onMove);pad.addEventListener('pointerup',onUp);pad.addEventListener('pointercancel',onUp);pad.addEventListener('gesturestart',noGesture);
   const resize=()=>{dirty=true;const w=el.clientWidth,h=el.clientHeight;const aspect=w/h;const worldWidth=(n*spacing+1.8)*1.45;const frustum=Math.max((n*spacing+1.7)*1.16,worldWidth/aspect);camera.left=-frustum*aspect/2;camera.right=frustum*aspect/2;camera.top=frustum/2;camera.bottom=-frustum/2;camera.updateProjectionMatrix();renderer.setSize(w,h);};const observer=new ResizeObserver(resize);observer.observe(el);resize();
   const clock=new T.Clock();let lastDraw=0;function draw(){if(!alive)return;frame=requestAnimationFrame(draw);const now=performance.now();if(software&&now-lastDraw<90)return;lastDraw=now;const dt=Math.min(clock.getDelta(),software?.14:.05),time=clock.elapsedTime;let moving=false;
    if(heroReady&&routePos<walkTo){const dest=point(game.route[walkIndex]);dest.y=.13;const delta=dest.clone().sub(hero.position),distance=delta.length();hero.rotation.y=Math.atan2(delta.x,delta.z);const step=dt*3.5;moving=true;if(distance<=step){hero.position.copy(dest);routePos=walkIndex;walkIndex++;}else hero.position.addScaledVector(delta.normalize(),step);}
    joints.forEach((j,i)=>{j.rotation.x=moving?Math.sin(time*15+(i%2)*Math.PI)*.42:Math.sin(time*2)*.025;});
    if(!software)markers.forEach(m=>{if(!m.g.visible)return;m.g.position.y=m.baseY+Math.sin(time*2+m.index)*.035;m.ring.scale.setScalar(1+Math.sin(time*3)*.07);});if(!software||dirty||moving){aim();renderer.render(scene,camera);dirty=false;}}
-  draw();return()=>{alive=false;modelAbort.abort();cancelAnimationFrame(frame);observer.disconnect();pad.removeEventListener('wheel',onWheel);pad.removeEventListener('pointerdown',onDown);pad.removeEventListener('pointermove',onMove);pad.removeEventListener('pointerup',onUp);pad.removeEventListener('pointercancel',onUp);pad.removeEventListener('gesturestart',noGesture);update.current=null;updateWords.current=null;dispose(scene);if(renderer instanceof T.WebGLRenderer){renderer.dispose();renderer.forceContextLoss();}renderer.domElement.remove();};
- },[stage,animal,view]);
+  draw();return()=>{alive=false;modelAbort.abort();cancelAnimationFrame(frame);observer.disconnect();pad.removeEventListener('wheel',onWheel);pad.removeEventListener('pointerdown',onDown);pad.removeEventListener('pointermove',onMove);pad.removeEventListener('pointerup',onUp);pad.removeEventListener('pointercancel',onUp);pad.removeEventListener('gesturestart',noGesture);update.current=null;updateWords.current=null;resetView.current=null;dispose(scene);if(renderer instanceof T.WebGLRenderer){renderer.dispose();renderer.forceContextLoss();}renderer.domElement.remove();};
+ },[stage,animal]);
  return <div className="maze-host" ref={host} role="img" aria-label={`과일·동물 아이소메트릭 3D 미로, ${progress}개 통과`}>{error&&<div className="maze-error">{error}</div>}</div>;
 }

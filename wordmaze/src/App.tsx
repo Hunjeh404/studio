@@ -74,9 +74,9 @@ function Game({mode,player,onPlayer,onExit}:{mode:PlayMode;player:Player;onPlaye
     <div className="timer"><Clock3 size={17}/><span>{formatTime(complete?finalTime:time)}</span><small>{demo?'둘러보기':'도전 시간'}</small></div>
     <Suspense fallback={<div className="loading-maze">정원으로 가는 중입니다…</div>}><Maze stage={stage} words={order} animal={animal} progress={progress} view={view} onReady={setModelReady}/></Suspense>
     {!modelReady&&<div className="model-loading">동물친구를 불러오고 있습니다…</div>}
-    <button className="friend-chip" onClick={()=>setDialog('animals')} disabled={disabled}><span>{friend.icon}</span><div><small>함께하는 친구</small><strong>{friend.name}</strong></div><ChevronRight size={15}/></button>
-    <button className="rotate-button icon-button" aria-label="미로 시점 회전" title="미로 시점 회전" onClick={()=>setView(v=>(v+1)%4)} disabled={recording||busy}><RotateCw size={19}/></button>
-    <span className="start-label"><span/>{mode==='single'?'기기 기록 · 모든 친구 선택 가능':`온라인 기록 · ✦ ${player.balance} 별빛`}</span>
+    <button className="friend-chip" onClick={()=>setDialog('animals')} disabled={disabled}><span>{friend.icon}</span><div><strong>{friend.name}</strong><small>{friend.skill}</small></div><ChevronRight size={15}/></button>
+    <button className="rotate-button icon-button" aria-label="처음 시점으로" title="처음 시점으로" onClick={()=>setView(v=>v+1)} disabled={recording||busy}><RotateCw size={19}/></button>
+    
    </div>
    <section className="speech-card" aria-label="발음 연습">
     {complete?<div className="completion"><div className="completion-symbol"><Flag size={26}/></div><p className="eyebrow">STAGE {String(stage).padStart(2,'0')} COMPLETE</p><h2>{demo?'정원을 둘러보았습니다':'미로를 통과했습니다!'}</h2><p>{demo?'둘러보기에서는 경쟁 기록을 저장하지 않습니다.':`${name}님의 기록 ${formatTime(finalTime)}${newBest?' · 개인 기록 경신!':''}`}</p>{!demo&&mode==='multi'&&<p className="reward-earned">✦ 별빛 {reward}개를 받았습니다.{newBest?' 기록 경신 보너스 포함!':''}</p>}<p className={`feedback ${tone}`} role="status">{status}</p><div className="completion-buttons"><button className="secondary" onClick={reset}>다시 도전</button>{stage<6&&<button className="primary" onClick={()=>goStage(stage+1)}>다음 스테이지 <ArrowRight size={17}/></button>}</div></div>:
@@ -90,7 +90,7 @@ function Game({mode,player,onPlayer,onExit}:{mode:PlayMode;player:Player;onPlaye
 
      </div></>}
    </section>
-   <div className="friend-skill"><strong>{friend.icon} {friend.skill}</strong><span>{friend.description}</span></div>
+   
   </div>
   {!!dialog&&<div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)setDialog('');}}><section ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><button className="close-button icon-button" autoFocus aria-label="창 닫기" onClick={()=>setDialog('')}><X size={21}/></button>
    {dialog==='animals'&&<><p className="eyebrow">OUR LITTLE FRIENDS</p><h2 id="dialog-title">어떤 친구와 떠날까요?</h2><p className="modal-help">{mode==='single'?'모든 동물친구를 자유롭게 선택하실 수 있습니다.':`✦ 별빛 ${player.balance}개 · 동물친구를 구매하고 함께 탐험해 보세요.`}</p><div className="animal-shop">{characters.map(a=>{const owned=mode==='single'||player.owned.includes(a.id);return <button key={a.id} disabled={busy||!owned&&player.balance<a.price} className={animal===a.id?'chosen':''} onClick={()=>chooseAnimal(a.id)}><span>{a.icon}</span><div><strong>{a.name}<small>{a.skill}</small></strong><p>{a.description}</p></div><b>{animal===a.id?'함께하는 중':owned?'선택':`✦ ${a.price}`}</b></button>;})}</div><p className="modal-feedback" role="status">{tone==='error'?status:''}</p></>}
