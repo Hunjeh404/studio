@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {downsample,encodeWav,toBase64,RATE} from '../src/lib/recorder.ts';
+const tone=new Float32Array(48000).map((_,i)=>Math.sin(i/48000*2*Math.PI*440)*.5);
+const down=downsample(tone,48000);assert.equal(down.length,RATE);assert.ok(Math.max(...down)<=.5&&Math.max(...down)>.4);
+const wav=encodeWav(down);const v=new DataView(wav.buffer);
+assert.equal(String.fromCharCode(...wav.slice(0,4)),'RIFF');assert.equal(String.fromCharCode(...wav.slice(8,12)),'WAVE');
+assert.equal(v.getUint16(22,true),1);assert.equal(v.getUint32(24,true),16000);assert.equal(v.getUint16(34,true),16);assert.equal(v.getUint32(40,true),RATE*2);assert.equal(wav.length,44+RATE*2);
+assert.equal(Buffer.from(toBase64(wav),'base64').equals(Buffer.from(wav)),true);
+assert.equal(encodeWav(new Float32Array([2,-2])).length,48);
+console.log('Recorder checks passed: 48k→16k downsampling, 16-bit mono WAV header and base64 round trip.');
