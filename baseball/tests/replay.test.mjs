@@ -1,4 +1,4 @@
-import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{buildReplay,trajectoryPoint}from'../src/engine.mjs';import{makeAssignments,SPECIES}from'../src/animals.mjs';
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{buildReplay,trajectoryPoint}from'../src/engine.mjs';import{animalOf}from'../src/animals.mjs';
 const data=JSON.parse(fs.readFileSync(new URL('../src/data.json',import.meta.url)));const scenes=buildReplay(data);
 test('실제 321구와 17개 반이닝 및 최종 8:7 점수가 맞는다',()=>{assert.equal(scenes.filter(s=>s.kind==='pitch').length,321);assert.equal(scenes.filter(s=>s.kind==='inning').length,17);assert.deepEqual(scenes.at(-1).after.score,{KT:8,SS:7});assert.equal(scenes.at(-1).after.outs,3);});
 test('모든 장면은 주자 이동을 한 번에 처리한다',()=>{for(const s of scenes){const bases=Object.values(s.after.bases);assert.equal(bases.length,new Set(bases).size,`scene ${s.index}`);assert.ok(s.after.outs>=0&&s.after.outs<=3);}});
@@ -7,5 +7,5 @@ test('도루·도루 실패·폭투를 각각 처리한다',()=>{assert.ok(scene
 test('321개의 궤적 수치와 도착 X가 유효하다',()=>{for(const s of scenes.filter(s=>s.kind==='pitch')){const p=trajectoryPoint(s.pitch.trajectory,1);assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.z));assert.ok(Math.abs(p.x-s.pitch.trajectory.crossPlateX)<.001);}});
 test('실책으로 타자·기존 주자가 연속 진루한 최종 상태가 맞는다',()=>{const s=scenes.find(s=>s.events.some(t=>t.includes('힐리어드 : 실책으로 2루')));assert.equal(s.after.bases.힐리어드,2);assert.equal(s.after.bases.배정대,3);});
 test('이닝별 득점이 공식 점수표와 일치한다',()=>{for(const team of ['KT','SS']){const by=Array(9).fill(0);for(const s of scenes)by[s.before.inning-1]+=s.after.score[team]-s.before.score[team];assert.deepEqual(by,data.official.score_by_inning[team].map(v=>v??0));}});
-test('42명 전원에게 실제 지원하는 동물이 배정된다',()=>{const a=makeAssignments(data.players);assert.equal(Object.keys(a).length,42);assert.ok(Object.values(a).every(x=>SPECIES[x.animal]&&x.reason));});
+test('한 팀은 한 동물: KT는 고양이, 삼성은 숫사자다',()=>{const keys=Object.keys(data.players);assert.equal(keys.length,42);assert.ok(keys.every(k=>animalOf(k)===(k.startsWith('KT:')?'cat':'lion')));});
 test('마지막 수비 명단과 마무리 투수가 맞는다',()=>{const d=scenes.at(-1).after.defense.KT;assert.equal(d[1],'박영현');assert.equal(d[6],'권동진');assert.equal(d[7],'힐리어드');assert.equal(d[8],'배정대');assert.equal(d[3],'오윤석');});
