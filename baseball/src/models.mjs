@@ -6,7 +6,21 @@ import CAT from'../../public/chars/cat.js';import LION from'../../public/chars/l
 const SOURCES={cat:CAT,lion:LION};const loaded={};
 // studio 집 페이지의 캐릭터 재질과 같은 3단 명암
 const charGrad=new T.DataTexture(new Uint8Array([195,232,255]),3,1,T.RedFormat);charGrad.minFilter=charGrad.magFilter=T.NearestFilter;charGrad.needsUpdate=true;
-export async function loadCharacters(){await Promise.all(Object.entries(SOURCES).map(([kind,b64])=>loaded[kind]??new Promise((ok,no)=>{const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)).buffer;new GLTFLoader().parse(bin,'',g=>{loaded[kind]=g.scene;ok();},no);})));}
+export async function loadCharacters(){await Promise.all(Object.entries(SOURCES).map(([kind,b64])=>loaded[kind]??new Promise((ok,no)=>{const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)).buffer;new GLTFLoader().parse(bin,'',g=>{loaded[kind]=g.scene;g.scene.userData.cap=trimForCap(g.scene,CAP_CUT[kind]);ok();},no);})));}
+// 모자: 눈 위로 머리(귀·갈기 포함)를 잘라내고 그 자리를 모자로 덮어, 귀나 갈기가 모자를 뚫고 나오지 않게 합니다.
+const CAP_CUT={cat:.33,lion:.32};
+function trimForCap(scene,cut){const head=scene.getObjectByName('head');let rx=0,zMin=9,zMax=-9;
+ for(const o of head.children){if(!o.isMesh||!/head_geo|mane_geo/.test(o.name))continue;const g=o.geometry;const p=g.attributes.position,idx=g.index.array,keep=[];
+  for(let i=0;i<p.count;i++){const y=p.getY(i);if(y>cut-.02&&y<cut+.06){rx=Math.max(rx,Math.abs(p.getX(i)));zMin=Math.min(zMin,p.getZ(i));zMax=Math.max(zMax,p.getZ(i));}}
+  for(let i=0;i<idx.length;i+=3){const cy=(p.getY(idx[i])+p.getY(idx[i+1])+p.getY(idx[i+2]))/3;if(cy<=cut)keep.push(idx[i],idx[i+1],idx[i+2]);}
+  g.setIndex(keep);}
+ return{cut,rx:rx+.025,rz:(zMax-zMin)/2+.025,cz:(zMax+zMin)/2};}
+const CAP={KT:{crown:'#2b2b33',brim:'#232329',button:'#d6232f'},SS:{crown:'#3677d3',brim:'#2c63b5',button:'#f5f7f9'}};
+function addCap(head,team,{cut,rx,rz,cz}){const cap=new T.Group();cap.name='cap';head.add(cap);const H=Math.min(rx,rz)*.9;
+ const crown=new T.Mesh(new T.SphereGeometry(1,32,14,0,Math.PI*2,0,Math.PI/2),new T.MeshToonMaterial({color:CAP[team].crown,gradientMap:charGrad,side:T.DoubleSide}));crown.scale.set(rx,H,rz);crown.position.set(0,cut-.012,cz);crown.castShadow=true;cap.add(crown);
+ const brim=new T.Mesh(new T.CylinderGeometry(1,1,1,28,1,false,-Math.PI/2,Math.PI),new T.MeshToonMaterial({color:CAP[team].brim,gradientMap:charGrad}));brim.scale.set(Math.min(rx*.86,.3),.024,rz+.15);brim.position.set(0,cut+.012,cz);brim.rotation.x=.14;brim.castShadow=true;cap.add(brim);
+ const button=new T.Mesh(new T.SphereGeometry(.022,12,8),new T.MeshToonMaterial({color:CAP[team].button,gradientMap:charGrad}));button.position.set(0,cut-.012+H,cz);cap.add(button);
+ const a=.62,logo=decal(patchTexture(team),Math.min(.17,rx*.5));logo.position.set(0,cut-.012+H*Math.sin(a)+.006,cz+rz*Math.cos(a)+.006);logo.rotation.x=-a*.9;cap.add(logo);return cap;}
 const textCache=new Map();
 export function labelTexture(text,color='#26382f',bg='#fff9e9'){const key=text+color+bg;if(textCache.has(key))return textCache.get(key);const c=document.createElement('canvas');c.width=256;c.height=80;const x=c.getContext('2d');x.fillStyle=bg;x.beginPath();x.roundRect(0,0,256,80,18);x.fill();x.fillStyle=color;x.textAlign='center';x.textBaseline='middle';x.font='600 34px "Malgun Gothic",sans-serif';x.fillText(text,128,41,230);const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;textCache.set(key,texture);return texture;}
 const KIT={KT:'#2b2b33',SS:'#3677d3'};
@@ -22,7 +36,7 @@ export function buildAnimal(kind,team='KT',number=''){const src=loaded[kind]??lo
   const logo=decal(patchTexture(team),.17);logo.position.set(0,cy,front(1)+.012);bodyGeo.add(logo);
   if(number){const back=decal(numberTexture(String(number)),.15);back.position.set(0,cy,front(-1)-.012);back.rotation.y=Math.PI;bodyGeo.add(back);}}
  const root=new T.Group();root.name=kind;root.add(model);
- const J=n=>model.getObjectByName(n);const hip=J('hip'),armL=J('armL'),armR=J('armR');
+ const J=n=>model.getObjectByName(n);const hip=J('hip'),armL=J('armL'),armR=J('armR');addCap(J('head'),team,src.userData.cap);
  const bat=new T.Group();bat.name='bat';bat.position.set(0,-.08,.03);armR.add(bat);rod(bat,'#c59a60',.42,.022);bat.visible=false;
  const glove=new T.Group();glove.name='glove';glove.position.set(0,-.09,.04);armL.add(glove);const g=new T.Mesh(new T.SphereGeometry(.065,16,12),toonMaterial('#ae794b'));g.scale.set(1,.95,.6);g.castShadow=true;glove.add(g);
  root.userData={kind,team,rig:{hip,hipRest:hip.position.y,head:J('head'),armL,armR,legL:J('legL'),legR:J('legR'),tail:J('tail'),bat,glove},height:.95};
