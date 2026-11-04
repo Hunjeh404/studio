@@ -18,7 +18,7 @@ function trimForCap(scene,cut){const head=scene.getObjectByName('head');let rx=0
 const CAP={KT:{crown:'#2b2b33',brim:'#232329',button:'#d6232f'},SS:{crown:'#3677d3',brim:'#2c63b5',button:'#f5f7f9'}};
 function addCap(head,team,{cut,rx,rz,cz}){const cap=new T.Group();cap.name='cap';head.add(cap);const H=Math.min(rx,rz)*.9;
  const crown=new T.Mesh(new T.SphereGeometry(1,32,14,0,Math.PI*2,0,Math.PI/2),new T.MeshToonMaterial({color:CAP[team].crown,gradientMap:charGrad,side:T.DoubleSide}));crown.scale.set(rx,H,rz);crown.position.set(0,cut-.012,cz);crown.castShadow=true;cap.add(crown);
- const brim=new T.Mesh(new T.CylinderGeometry(1,1,1,28,1,false,-Math.PI/2,Math.PI),new T.MeshToonMaterial({color:CAP[team].brim,gradientMap:charGrad}));brim.scale.set(Math.min(rx*.86,.3),.024,rz+.15);brim.position.set(0,cut+.012,cz);brim.rotation.x=.14;brim.castShadow=true;cap.add(brim);
+ const brim=new T.Mesh(new T.CylinderGeometry(1,1,1,28,1,false,-Math.PI/2,Math.PI),new T.MeshToonMaterial({color:CAP[team].brim,gradientMap:charGrad}));brim.scale.set(rx,.03,rz+.16);brim.position.set(0,cut-.012,cz);const band=new T.Mesh(new T.CylinderGeometry(1,1,1,40,1,true),new T.MeshToonMaterial({color:CAP[team].crown,gradientMap:charGrad,side:T.DoubleSide}));band.scale.set(rx,.032,rz);band.position.set(0,cut-.012,cz);cap.add(band);brim.castShadow=true;cap.add(brim);
  const button=new T.Mesh(new T.SphereGeometry(.022,12,8),new T.MeshToonMaterial({color:CAP[team].button,gradientMap:charGrad}));button.position.set(0,cut-.012+H,cz);cap.add(button);
  const a=.62,logo=decal(patchTexture(team),Math.min(.17,rx*.5));logo.position.set(0,cut-.012+H*Math.sin(a)+.006,cz+rz*Math.cos(a)+.006);logo.rotation.x=-a*.9;cap.add(logo);return cap;}
 const textCache=new Map();
@@ -28,6 +28,8 @@ const patchTextures=new Map();function patchTexture(team){if(!patchTextures.has(
 function numberTexture(text){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#f7f3e9';x.font='bold 78px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(text,64,68,120);const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;return t;}
 function decal(map,size){return new T.Mesh(new T.PlaneGeometry(size,size),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-4}));}
 function rod(parent,color,len,r){const m=new T.Mesh(new T.CylinderGeometry(r,r*.7,len,12),toonMaterial(color));m.position.y=len/2;m.castShadow=true;parent.add(m);return m;}
+// 방망이 (손잡이가 원점, +Y 방향으로 뻗음). 타자 손과 던진 방망이가 같은 모양을 씁니다.
+export function makeBat(){const g=new T.Group();g.name='bat';rod(g,'#c59a60',.5,.024);const knob=new T.Mesh(new T.SphereGeometry(.02,10,8),toonMaterial('#7a5434'));g.add(knob);return g;}
 export function buildAnimal(kind,team='KT',number=''){const src=loaded[kind]??loaded.cat;const model=src.clone(true);
  model.traverse(o=>{if(o.isMesh){const map=o.material.map,vc=!!o.geometry.attributes.color;o.material=new T.MeshToonMaterial(map?{map,gradientMap:charGrad,emissive:0x161412}:vc?{vertexColors:true,gradientMap:charGrad,emissive:0x161412}:{color:o.material.color.clone(),gradientMap:charGrad,emissive:0x161412});o.castShadow=true;o.receiveShadow=true;}});
  // 유니폼: 몸통을 팀 색으로, 가슴에 구단 로고, 등에 등번호
@@ -37,13 +39,13 @@ export function buildAnimal(kind,team='KT',number=''){const src=loaded[kind]??lo
   if(number){const back=decal(numberTexture(String(number)),.15);back.position.set(0,cy,front(-1)-.012);back.rotation.y=Math.PI;bodyGeo.add(back);}}
  const root=new T.Group();root.name=kind;root.add(model);
  const J=n=>model.getObjectByName(n);const hip=J('hip'),armL=J('armL'),armR=J('armR');addCap(J('head'),team,src.userData.cap);
- const bat=new T.Group();bat.name='bat';bat.position.set(0,-.08,.03);armR.add(bat);rod(bat,'#c59a60',.42,.022);bat.visible=false;
+ const bat=makeBat();bat.position.set(-.47,.1,.12);hip.add(bat);bat.visible=false;
  const glove=new T.Group();glove.name='glove';glove.position.set(0,-.09,.04);armL.add(glove);const g=new T.Mesh(new T.SphereGeometry(.065,16,12),toonMaterial('#ae794b'));g.scale.set(1,.95,.6);g.castShadow=true;glove.add(g);
  root.userData={kind,team,rig:{hip,hipRest:hip.position.y,head:J('head'),armL,armR,legL:J('legL'),legR:J('legR'),tail:J('tail'),bat,glove},height:.95};
  return root;
 }
 export function poseAnimal(model,{time=0,run=0,throwing=0,swing=0,catcher=false,batter=false}={}){const r=model.userData.rig;const step=Math.sin(time*14);r.hip.position.y=r.hipRest+(run?Math.abs(step)*.018:Math.sin(time*2.7)*.003);r.head.rotation.z=run?step*.035:0;r.legL.rotation.x=run?step*.58:0;r.legR.rotation.x=run?-step*.58:0;r.armL.rotation.x=run?-step*.55:0;r.armR.rotation.x=run?step*.55:0;r.armL.rotation.z=.08;r.armR.rotation.z=-.08;r.hip.rotation.y=0;r.bat.visible=batter;r.glove.visible=!batter;
- if(batter){r.armR.rotation.x=-1.1;r.armR.rotation.z=-.55;r.armL.rotation.x=-.7;r.armL.rotation.z=.65;r.bat.rotation.z=-.3;if(swing>0){const f=Math.sin(swing*Math.PI);r.hip.rotation.y=-f*1.5;r.armR.rotation.x=-.5-f*.8;r.armR.rotation.z=-.3-f*1.1;r.armL.rotation.z=.4+f*.6;}}
+ if(batter){r.armR.rotation.x=-1.1;r.armR.rotation.z=-.55;r.armL.rotation.x=-.7;r.armL.rotation.z=.65;r.bat.rotation.set(-.35,0,.35);if(swing>0){const f=Math.sin(swing*Math.PI);r.hip.rotation.y=-f*1.5;r.armR.rotation.x=-.5-f*.8;r.armR.rotation.z=-.3-f*1.1;r.armL.rotation.z=.4+f*.6;r.bat.rotation.set(-.35+f*2.0,0,.35-f*.25);}}
  if(throwing>0){r.armR.rotation.x=-throwing*2.9;r.armL.rotation.x=-throwing*.65;r.legL.rotation.x=throwing*.7;r.hip.rotation.y=throwing*.22;}
  if(catcher){r.hip.position.y-=.055;r.legL.rotation.x=-.4;r.legR.rotation.x=-.4;r.armL.rotation.x=-.8;}
 }
