@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{clipNearPolygon}from'../src/clipping.mjs';
+test('카메라 뒤로 걸친 잔디 삼각형을 버리지 않고 보이는 사각형으로 자른다',()=>{const result=clipNearPolygon([{x:100,y:100,z:.9,w:10,uv:[0,0]},{x:400,y:100,z:.9,w:10,uv:[1,0]},{x:200,y:200,z:1.1,w:-1,uv:[.5,1]}],.1,250,200);assert.equal(result.length,4);assert.ok(result.every(v=>v.w>=.1&&Number.isFinite(v.x)&&Number.isFinite(v.y)));assert.equal(result.filter(v=>v.w===.1).length,2);assert.ok(result.every(v=>v.uv.every(n=>n>=0&&n<=1)));});
+test('모두 카메라 뒤에 있는 삼각형만 제외한다',()=>{const result=clipNearPolygon([{x:0,y:0,z:2,w:-1},{x:1,y:0,z:2,w:-1},{x:0,y:1,z:2,w:-1}],.1,0,0);assert.deepEqual(result,[]);});

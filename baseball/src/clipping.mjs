@@ -1,0 +1,3 @@
+// Clip camera-space triangles before perspective division; never discard a whole ground
+// triangle just because one corner is behind the camera.
+export function clipNearPolygon(vertices,near,cx,cy){const out=[];for(let i=0;i<vertices.length;i++){const a=vertices[i],b=vertices[(i+1)%vertices.length],insideA=a.w>=near,insideB=b.w>=near;if(insideA)out.push(a);if(insideA===insideB)continue;const t=(near-a.w)/(b.w-a.w),mix=(x,y)=>x+(y-x)*t;const v={w:near,x:mix((a.x-cx)*a.w,(b.x-cx)*b.w)/near+cx,y:mix((a.y-cy)*a.w,(b.y-cy)*b.w)/near+cy,z:mix(a.z*a.w,b.z*b.w)/near};if(a.uv&&b.uv)v.uv=[mix(a.uv[0],b.uv[0]),mix(a.uv[1],b.uv[1])];out.push(v);}return out;}
