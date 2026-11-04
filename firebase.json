@@ -19,6 +19,12 @@
       "public": "wordmaze/dist",
       "ignore": ["**/.*"],
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    },
+    {
+      "target": "animaleague",
+      "public": "baseball",
+      "ignore": ["**/.*", "**/node_modules/**", "src/**", "tests/**", "scripts/**", "*.json", "*.mjs", "*.md"],
+      "headers": [{ "source": "index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }]
     }
   ]
 }

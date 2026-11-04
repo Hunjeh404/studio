@@ -5,7 +5,8 @@
       "hosting": {
         "studio": ["kaylastudio"],
         "elsa-phonics": ["elsa-phonics"],
-        "wordmaze": ["wordmaze"]
+        "wordmaze": ["wordmaze"],
+        "animaleague": ["animaleague"]
       }
     }
   }
