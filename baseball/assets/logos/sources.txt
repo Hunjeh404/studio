@@ -1,0 +1,32 @@
+KBO 8개 구단 로고
+
+형식: 투명 배경 PNG, 각 184 × 184 px
+네이버 스포츠에서 제공하는 원본 이미지를 수정 없이 수록했습니다.
+KBO 2026 시즌 구단 로고와 대조했습니다.
+KT와 삼성은 제외했습니다.
+
+구단 목록 확인: https://www.koreabaseball.com/Kbo/League/TeamInfo.aspx
+
+LG 트윈스 — LG_Twins.png
+https://sports-phinf.pstatic.net/team/kbo/default/LG.png
+
+한화 이글스 — Hanwha_Eagles.png
+https://sports-phinf.pstatic.net/team/kbo/default/HH.png
+
+SSG 랜더스 — SSG_Landers.png
+https://sports-phinf.pstatic.net/team/kbo/default/SK.png
+
+두산 베어스 — Doosan_Bears.png
+https://sports-phinf.pstatic.net/team/kbo/default/OB.png
+
+롯데 자이언츠 — Lotte_Giants.png
+https://sports-phinf.pstatic.net/team/kbo/default/LT.png
+
+KIA 타이거즈 — KIA_Tigers.png
+https://sports-phinf.pstatic.net/team/kbo/default/HT.png
+
+NC 다이노스 — NC_Dinos.png
+https://sports-phinf.pstatic.net/team/kbo/default/NC.png
+
+키움 히어로즈 — Kiwoom_Heroes.png
+https://sports-phinf.pstatic.net/team/kbo/default/WO.png
