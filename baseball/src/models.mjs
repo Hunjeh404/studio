@@ -29,7 +29,10 @@ function numberTexture(text){const c=document.createElement('canvas');c.width=c.
 function decal(map,size){return new T.Mesh(new T.PlaneGeometry(size,size),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-4}));}
 function rod(parent,color,len,r){const m=new T.Mesh(new T.CylinderGeometry(r,r*.7,len,12),toonMaterial(color));m.position.y=len/2;m.castShadow=true;parent.add(m);return m;}
 // 방망이 (손잡이가 원점, +Y 방향으로 뻗음). 타자 손과 던진 방망이가 같은 모양을 씁니다.
-export function makeBat(){const g=new T.Group();g.name='bat';rod(g,'#c59a60',.62,.024);const knob=new T.Mesh(new T.SphereGeometry(.02,10,8),toonMaterial('#7a5434'));g.add(knob);return g;}
+// 실제 방망이 단면(손잡이 노브 → 가는 손잡이 → 굵어지는 몸통 → 둥근 끝)을 돌려 만든 모양. 길이 .62
+const BAT_PROFILE=[[0,0],[.017,.002],[.019,.01],[.012,.022],[.0105,.06],[.011,.16],[.013,.24],[.018,.33],[.024,.42],[.028,.5],[.029,.57],[.028,.6],[.022,.615],[.012,.62],[0,.62]].map(([r,y])=>new T.Vector2(r,y));
+const batGeo=new T.LatheGeometry(BAT_PROFILE,18);
+export function makeBat(){const g=new T.Group();g.name='bat';const m=new T.Mesh(batGeo,toonMaterial('#c59a60'));m.castShadow=true;g.add(m);const grip=new T.Mesh(new T.CylinderGeometry(.0118,.0112,.09,14),toonMaterial('#3a3540'));grip.position.y=.07;g.add(grip);return g;}
 export function buildAnimal(kind,team='KT',number=''){const src=loaded[kind]??loaded.cat;const model=src.clone(true);
  model.traverse(o=>{if(o.isMesh){const map=o.material.map,vc=!!o.geometry.attributes.color;o.material=new T.MeshToonMaterial(map?{map,gradientMap:charGrad,emissive:0x161412}:vc?{vertexColors:true,gradientMap:charGrad,emissive:0x161412}:{color:o.material.color.clone(),gradientMap:charGrad,emissive:0x161412});o.castShadow=true;o.receiveShadow=true;}});
  // 유니폼: 몸통을 팀 색으로, 가슴에 구단 로고, 등에 등번호
