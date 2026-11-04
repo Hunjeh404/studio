@@ -29,7 +29,7 @@ function numberTexture(text){const c=document.createElement('canvas');c.width=c.
 function decal(map,size){return new T.Mesh(new T.PlaneGeometry(size,size),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-4}));}
 function rod(parent,color,len,r){const m=new T.Mesh(new T.CylinderGeometry(r,r*.7,len,12),toonMaterial(color));m.position.y=len/2;m.castShadow=true;parent.add(m);return m;}
 // 방망이 (손잡이가 원점, +Y 방향으로 뻗음). 타자 손과 던진 방망이가 같은 모양을 씁니다.
-export function makeBat(){const g=new T.Group();g.name='bat';rod(g,'#c59a60',.5,.024);const knob=new T.Mesh(new T.SphereGeometry(.02,10,8),toonMaterial('#7a5434'));g.add(knob);return g;}
+export function makeBat(){const g=new T.Group();g.name='bat';rod(g,'#c59a60',.62,.024);const knob=new T.Mesh(new T.SphereGeometry(.02,10,8),toonMaterial('#7a5434'));g.add(knob);return g;}
 export function buildAnimal(kind,team='KT',number=''){const src=loaded[kind]??loaded.cat;const model=src.clone(true);
  model.traverse(o=>{if(o.isMesh){const map=o.material.map,vc=!!o.geometry.attributes.color;o.material=new T.MeshToonMaterial(map?{map,gradientMap:charGrad,emissive:0x161412}:vc?{vertexColors:true,gradientMap:charGrad,emissive:0x161412}:{color:o.material.color.clone(),gradientMap:charGrad,emissive:0x161412});o.castShadow=true;o.receiveShadow=true;}});
  // 유니폼: 몸통을 팀 색으로, 가슴에 구단 로고, 등에 등번호
@@ -39,13 +39,15 @@ export function buildAnimal(kind,team='KT',number=''){const src=loaded[kind]??lo
   if(number){const back=decal(numberTexture(String(number)),.15);back.position.set(0,cy,front(-1)-.012);back.rotation.y=Math.PI;bodyGeo.add(back);}}
  const root=new T.Group();root.name=kind;root.add(model);
  const J=n=>model.getObjectByName(n);const hip=J('hip'),armL=J('armL'),armR=J('armR');addCap(J('head'),team,src.userData.cap);
- const bat=makeBat();bat.position.set(-.47,.1,.12);hip.add(bat);bat.visible=false;
+ const bat=makeBat();bat.position.set(.27,.19,.27);hip.add(bat);bat.visible=false;
  const glove=new T.Group();glove.name='glove';glove.position.set(0,-.09,.04);armL.add(glove);const g=new T.Mesh(new T.SphereGeometry(.065,16,12),toonMaterial('#ae794b'));g.scale.set(1,.95,.6);g.castShadow=true;glove.add(g);
  root.userData={kind,team,rig:{hip,hipRest:hip.position.y,head:J('head'),armL,armR,legL:J('legL'),legR:J('legR'),tail:J('tail'),bat,glove},height:.95};
  return root;
 }
-export function poseAnimal(model,{time=0,run=0,throwing=0,swing=0,catcher=false,batter=false}={}){const r=model.userData.rig;const step=Math.sin(time*14);r.hip.position.y=r.hipRest+(run?Math.abs(step)*.018:Math.sin(time*2.7)*.003);r.head.rotation.z=run?step*.035:0;r.legL.rotation.x=run?step*.58:0;r.legR.rotation.x=run?-step*.58:0;r.armL.rotation.x=run?-step*.55:0;r.armR.rotation.x=run?step*.55:0;r.armL.rotation.z=.08;r.armR.rotation.z=-.08;r.hip.rotation.y=0;r.bat.visible=batter;r.glove.visible=!batter;
- if(batter){r.armR.rotation.x=-1.1;r.armR.rotation.z=-.55;r.armL.rotation.x=-.7;r.armL.rotation.z=.65;r.bat.rotation.set(-.35,0,.35);if(swing>0){const f=Math.sin(swing*Math.PI);r.hip.rotation.y=-f*1.5;r.armR.rotation.x=-.5-f*.8;r.armR.rotation.z=-.3-f*1.1;r.armL.rotation.z=.4+f*.6;r.bat.rotation.set(-.35+f*2.0,0,.35-f*.25);}}
+const UP=new T.Vector3(0,1,0),BAT_DIR=new T.Vector3();
+export function poseAnimal(model,{time=0,run=0,throwing=0,swing=0,catcher=false,batter=false}={}){const r=model.userData.rig;const step=Math.sin(time*14);r.hip.position.y=r.hipRest+(run?Math.abs(step)*.018:Math.sin(time*2.7)*.003);r.head.rotation.z=run?step*.035:0;r.legL.rotation.x=run?step*.58:0;r.legR.rotation.x=run?-step*.58:0;r.armL.rotation.x=run?-step*.55:0;r.armR.rotation.x=run?step*.55:0;r.armL.rotation.z=.08;r.armR.rotation.z=-.08;r.armL.rotation.y=r.armR.rotation.y=0;r.hip.rotation.y=0;r.bat.visible=batter;r.glove.visible=!batter;
+ // 타자: 두 손을 가슴 앞으로 모으고, 방망이는 두 손 앞을 가로질러 오른쪽으로 듭니다. 스윙하면 몸을 돌리며 방망이를 눕힙니다.
+ if(batter){r.armR.rotation.set(-1.4,0,.6);r.armL.rotation.set(-1.4,0,-.6);const f=swing>0?Math.sin(swing*Math.PI):0;r.hip.rotation.y=-f*1.5;BAT_DIR.set(-.99,.15-.1*f,.25*f).normalize();r.bat.quaternion.setFromUnitVectors(UP,BAT_DIR);}
  if(throwing>0){r.armR.rotation.x=-throwing*2.9;r.armL.rotation.x=-throwing*.65;r.legL.rotation.x=throwing*.7;r.hip.rotation.y=throwing*.22;}
  if(catcher){r.hip.position.y-=.055;r.legL.rotation.x=-.4;r.legR.rotation.x=-.4;r.armL.rotation.x=-.8;}
 }

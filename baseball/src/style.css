@@ -17,3 +17,6 @@
 .transport-buttons .play-button{min-width:0;height:42px;gap:0;background:#2c3530;color:#fffef8;flex-grow:1.4;max-width:104px}
 .transport-buttons .play-button:hover{background:#425447}
 @media (max-width:520px){.transport-buttons{gap:5px}.tool-icon,.transport-buttons .play-button{height:38px}.tool-icon svg{width:20px;height:20px}}
+
+/* 폰에서 경기 화면이 화면 폭을 넘지 않게 (min-height와 비율 때문에 넓어지던 문제) */
+.canvas-wrap{max-width:calc(100% - 12px)}
