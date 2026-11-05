@@ -3,7 +3,7 @@ export const TEAMS={KT:{name:'KT',fullName:'KT 위즈',color:'#252a34',accent:'#
 export const POS={투수:1,포수:2,'1루수':3,'2루수':4,'3루수':5,유격수:6,좌익수:7,중견수:8,우익수:9};
 const initialCode={'一':3,'二':4,'三':5,'유':6,'좌':7,'중':8,'우':9,'포':2};
 export const clone=x=>JSON.parse(JSON.stringify(x));
-export function buildReplay(data){
+export function buildReplay(data,{live=false}={}){
  const {events,official}=data;const defense={KT:{},SS:{}};
  for(const t of ['KT','SS']){
   for(const p of official.starting_lineups[t]){const pos=initialCode[p.position_code_original[0]];if(pos)defense[t][pos]=p.name;}
@@ -50,7 +50,7 @@ export function buildReplay(data){
    const b=clone(s),es=[e],moves=[];importState(e);s.balls=0;s.strikes=0;while(events[i+1]?.type==='runner'){const n=events[++i];es.push(n);importState(n);moves.push({name:n.player,from:n.from_base,to:n.to_base,out:n.out,text:n.text});}add('result',b,s,es,{result:e.text,batter:b.batter,batterTo:e.batter_to,moves,label:e.text,duration:4.5});
   }else if(e.type==='info'&&(/마운드 방문|비디오 판독/.test(e.text))){add('info',s,s,[e],{label:e.text,duration:1.4});}
  }
- const awards=gameAwards(data,scenes);add('ceremony',s,s,[],{awards,label:'경기 종료',duration:16});
+ if(live)return scenes;const awards=gameAwards(data,scenes);add('ceremony',s,s,[],{awards,label:'경기 종료',duration:16});
  return scenes;
 }
 export function trajectoryPoint(p,u){
