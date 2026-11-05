@@ -34,7 +34,7 @@ function renderFeed(after){
  $('feed').innerHTML=rows.length?rows.map(s=>`<button class="feed-row ${s.index===index?'current':''}" data-scene="${s.index}"><span class="feed-number">${s.before.inning}${s.before.half}</span><span><b>${s.result??s.moves?.[0]?.text??s.label}</b><small>${s.after.score.KT} : ${s.after.score.SS} · ${s.after.outs}아웃</small></span></button>`).join(''):'<div class="feed-empty">경기가 진행되면 기록이 쌓입니다.</div>';
  $('feed').querySelectorAll('button').forEach(b=>b.onclick=()=>go(Number(b.dataset.scene)));
 }
-function draw(){const s=scenes[index];const p=progress();renderer.draw(s,p,p>=.96,ambientNow);renderer.drawZone($('zone'),s,p);}
+function draw(){const s=scenes[index];const p=progress();renderer.draw(s,p,p>=.96,ambientNow);}
 function tick(now){ambientNow=now/1000;
  if(playing){if(last){clock+=Math.min(.25,(now-last)/1000)*speed;if(clock>duration(scenes[index])+.8){if(index<scenes.length-1){index++;clock=0;phase='';}else{clock=duration(scenes[index]);playing=false;updateButtons();toast(`경기 종료 · KT ${scenes.at(-1).after.score.KT} : ${scenes.at(-1).after.score.SS} 삼성`);}}}last=now;}
  const p=progress(),ph=index+':'+(p>=.96?'done':p>.43?'contact':'pitch');const dirty=ph!==phase;if(dirty){phase=ph;updateUI(p>=.96);}if(playing||dirty||scenes[index].kind==='ceremony')draw();request=requestAnimationFrame(tick);

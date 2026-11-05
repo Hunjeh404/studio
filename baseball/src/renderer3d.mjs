@@ -84,6 +84,6 @@ export class Renderer3D{
   const at=s=>{const q=Math.min(1,Math.max(0,s/T));return{x:-1.2-D*.35*q,y:q<1?2.1+H*4*q*(1-q)-q*1.95:.15,z:.3+D*.95*q,rx:q<1?spin*q*Math.PI*2:Math.PI/2,ry:twist*q*Math.PI*2+(q<1?0:.7)};};
   this.flyBats.forEach((b,i)=>{if(i>ghosts)return;const s=tau-i*.05;if(s<0||(i&&s>=T))return;const p=at(s);b.visible=true;b.position.set(p.x,p.y,p.z);b.rotation.set(p.rx,p.ry,0);});}
  redraw(){if(this.current)this.draw(this.current.scene,this.current.u,this.current.after,this.current.ambient);}
- drawZone(canvas,scene,u){const c=canvas.getContext('2d');c.clearRect(0,0,150,140);const p=scene.pitch?.trajectory;const top=p?.topSz??3.4,bottom=p?.bottomSz??1.6;const X=x=>75+x*26,Y=z=>123-z*25;c.fillStyle='#edf0e5';c.fillRect(42,Y(top),66,(top-bottom)*25);c.strokeStyle='#bfc7b0';c.strokeRect(42,Y(top),66,(top-bottom)*25);c.strokeStyle='#d5dcc8';for(let j=1;j<3;j++){c.beginPath();c.moveTo(42+j*22,Y(top));c.lineTo(42+j*22,Y(bottom));c.moveTo(42,Y(top)+(top-bottom)*25*j/3);c.lineTo(108,Y(top)+(top-bottom)*25*j/3);c.stroke();}if(p&&u>.1){const tp=trajectoryPoint(p,1);c.fillStyle='#df6856';c.beginPath();c.arc(X(tp.x),Y(tp.z),5,0,7);c.fill();}}
+
 }
 
