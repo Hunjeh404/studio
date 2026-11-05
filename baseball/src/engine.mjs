@@ -50,7 +50,7 @@ export function buildReplay(data,{live=false}={}){
    const b=clone(s),es=[e],moves=[];importState(e);s.balls=0;s.strikes=0;while(events[i+1]?.type==='runner'){const n=events[++i];es.push(n);importState(n);moves.push({name:n.player,from:n.from_base,to:n.to_base,out:n.out,text:n.text});}add('result',b,s,es,{result:e.text,batter:b.batter,batterTo:e.batter_to,moves,label:e.text,duration:4.5});
   }else if(e.type==='info'&&(/마운드 방문|비디오 판독/.test(e.text))){add('info',s,s,[e],{label:e.text,duration:1.4});}
  }
- if(live)return scenes;const awards=gameAwards(data,scenes);add('ceremony',s,s,[],{awards,label:'경기 종료',duration:16});
+ if(live){if(scenes.length>1)scenes.pop();return scenes;}const awards=gameAwards(data,scenes);add('ceremony',s,s,[],{awards,label:'경기 종료',duration:16});
  return scenes;
 }
 export function trajectoryPoint(p,u){
