@@ -1,0 +1,22 @@
+# 진단용: GitHub Actions에서 네이버 문자중계 API 접속 시험 (수동 실행 전용)
+name: Naver relay probe
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch finished game relay (KS game 2, inning 1)
+        run: |
+          for i in 1 12; do
+            echo "== inning $i"
+            curl -sS -m 35 -o out.json -w "status %{http_code} time %{time_total}s bytes %{size_download}\n" \
+              -H "User-Agent: Mozilla/5.0" -H "Referer: https://m.sports.naver.com/" -H "Accept: application/json" \
+              "https://api-gw.sports.naver.com/schedule/games/77771104SSKT02026/relay?inning=$i" || echo "curl failed"
+            head -c 400 out.json 2>/dev/null; echo
+            python3 -c "import json;d=json.load(open('out.json'));r=d['result']['textRelayData'];print('keys',list(r.keys())[:12]);print('relays',len(r.get('textRelays',[])))" 2>&1 | head -3
+          done
+          echo "== KBO"
+          curl -sS -m 35 -o kbo.txt -w "status %{http_code} time %{time_total}s bytes %{size_download}\n" -X POST \
+            -d "leId=1&srId=7&date=20261104" "https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList" || echo "curl failed"
+          head -c 300 kbo.txt; echo
