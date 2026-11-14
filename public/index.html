@@ -908,7 +908,7 @@ function animalOf(a) { return store.get('animal:' + a, ACCOUNTS[a].animal); }
 const GLB_KINDS = new Set(Object.keys(ANIMALS));
 const charGrad = new THREE.DataTexture(new Uint8Array([195, 232, 255]), 3, 1, THREE.RedFormat); charGrad.minFilter = charGrad.magFilter = THREE.NearestFilter; charGrad.needsUpdate = true;
 const glbCache = {};
-const CHAR_V = '20261114-4'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
+const CHAR_V = '20261114-5'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
 function loadGlb(kind) {
   // 모델은 chars/<종류>.js 안에 base64로 들어 있음 (아티팩트가 .glb를 직접 못 올려서)
   return glbCache[kind] ??= import(`./chars/${kind}.js?v=${CHAR_V}`).then(m => new Promise((ok, no) => {
