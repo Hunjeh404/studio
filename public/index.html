@@ -688,10 +688,17 @@ const sea = new THREE.Group(); scene.add(sea);
   const W = SEA.x1 - SEA.x0, D = SEA.z1 - SEA.z0, cx = (SEA.x0 + SEA.x1) / 2, cz = (SEA.z0 + SEA.z1) / 2, H = SEA.top - 0.01 - SEA.bed;
   const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), new THREE.MeshToonMaterial({ color: '#00bfe0', gradientMap: grad, transparent: true, opacity: 0.45, depthWrite: false }));
   body.position.set(cx, SEA.bed + H / 2, cz); sea.add(body);
-  const surf = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.ShaderMaterial({
-    uniforms: { t: { value: 0 }, sc: { value: 0.2 }, base: { value: new THREE.Color('#12bcd8') }, hi: { value: new THREE.Color('#ffffff') } },
-    vertexShader: 'varying vec2 vP; void main(){ vec4 w = modelMatrix * vec4(position, 1.); vP = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }',
-    fragmentShader: `uniform float t, sc; uniform vec3 base, hi; varying vec2 vP;
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(W, D, 200, 200), new THREE.ShaderMaterial({
+    uniforms: { t: { value: 0 }, sc: { value: 0.2 }, base: { value: new THREE.Color('#12bcd8') }, hi: { value: new THREE.Color('#ffffff') }, amp: { value: 0.045 }, hsz: { value: new THREE.Vector2(W / 2, D / 2) } },
+    // 물결: 사인파 셋을 겹쳐 수면을 오르내리게 함, 바다 가장자리 1.5m는 0으로 줄여 물 상자 윗면과 맞춤
+    vertexShader: `uniform float t, amp; uniform vec2 hsz; varying vec2 vP; varying float vH;
+      void main(){
+        vec4 w = modelMatrix * vec4(position, 1.);
+        float h = sin(w.x * 0.9 + w.z * 0.4 + t * 1.1) * 0.5 + sin(w.z * 1.3 - w.x * 0.5 + t * 1.5) * 0.3 + sin((w.x + w.z) * 2.2 + t * 2.3) * 0.2;
+        vec2 e = hsz - abs(position.xy); float edge = smoothstep(0., 1.5, min(e.x, e.y));
+        vH = h * edge; w.y += vH * amp; vP = w.xz;
+        gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform float t, sc, amp; uniform vec3 base, hi; varying vec2 vP; varying float vH;
       float caustic(vec2 uv){ // 물속 바닥에 비친 그물 무늬 빛
         vec2 p = mod(uv * 6.28318, 6.28318) - 250., i = p; float c = 1.;
         for (int n = 0; n < 4; n++) { float tt = t * 0.35 * (1. - 3.5 / float(n + 1)); i = p + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
@@ -700,13 +707,17 @@ const sea = new THREE.Group(); scene.add(sea);
       void main(){
         float k = caustic(vP * sc);
         vec3 col = mix(base, hi, k * 0.85); float a = 0.1 + k * 0.5;
+        if (amp > 0.) { // 카툰 셰이딩처럼 물결 마루는 밝게, 골은 진하게 두 단계로 끊어 칠함
+          float crest = step(0.55, vH), trough = step(vH, -0.55);
+          col = mix(col, hi, crest * 0.35); a += crest * 0.12;
+          col = mix(col, base * 0.75, trough * 0.5); a += trough * 0.1; }
         gl_FragColor = vec4(col, a);
       }`,
     transparent: true, depthWrite: false,
   }));
   surf.rotation.x = -Math.PI / 2; surf.position.set(cx, SEA.top, cz); sea.add(surf); sea.userData.surf = surf;
   // 욕조 물: 바다와 같은 수면(잔물결 빛)을 욕조 물 면(1.4x0.58, 높이 0.565) 위에 얹음
-  const bm = surf.material.clone(); bm.uniforms.sc.value = 1.4; bm.uniforms.base.value = new THREE.Color('#7fdcef');
+  const bm = surf.material.clone(); bm.uniforms.sc.value = 1.4; bm.uniforms.amp.value = 0; // 욕조 물은 출렁이지 않음 bm.uniforms.base.value = new THREE.Color('#7fdcef');
   const bath = new THREE.Mesh(new THREE.PlaneGeometry(1.38, 0.56), bm); bath.rotation.x = -Math.PI / 2; bath.position.set(4.0, 0.57, -2.5); sea.add(bath); sea.userData.bath = bath;
   const ring = (k) => SEA.island.map(([x, z]) => new THREE.Vector2(x * k, -z * k));
   const fs = new THREE.Shape(ring(1.035)); fs.holes.push(new THREE.Path(ring(0.995)));
@@ -983,7 +994,7 @@ function animalOf(a) { const k = store.get('animal:' + a, ACCOUNTS[a].animal); r
 const GLB_KINDS = new Set(Object.keys(ANIMALS));
 const charGrad = new THREE.DataTexture(new Uint8Array([222, 248, 255]), 3, 1, THREE.RedFormat); charGrad.minFilter = charGrad.magFilter = THREE.NearestFilter; charGrad.needsUpdate = true;
 const glbCache = {};
-const CHAR_V = '20261120-5'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
+const CHAR_V = '20261120-6'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
 function loadGlb(kind) {
   // 모델은 chars/<종류>.js 안에 base64로 들어 있음 (아티팩트가 .glb를 직접 못 올려서)
   return glbCache[kind] ??= import(`./chars/${kind}.js?v=${CHAR_V}`).then(m => new Promise((ok, no) => {
