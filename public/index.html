@@ -977,9 +977,9 @@ let hero = null;
 function animalOf(a) { const k = store.get('animal:' + a, ACCOUNTS[a].animal); return ANIMALS[k] ? k : ACCOUNTS[a].animal; }
 // 블렌더로 만든 캐릭터(GLB). 있는 종류는 파일을 불러와 바꿔 끼우고, 없는 종류는 기존 모양을 씀
 const GLB_KINDS = new Set(Object.keys(ANIMALS));
-const charGrad = new THREE.DataTexture(new Uint8Array([195, 232, 255]), 3, 1, THREE.RedFormat); charGrad.minFilter = charGrad.magFilter = THREE.NearestFilter; charGrad.needsUpdate = true;
+const charGrad = new THREE.DataTexture(new Uint8Array([222, 248, 255]), 3, 1, THREE.RedFormat); charGrad.minFilter = charGrad.magFilter = THREE.NearestFilter; charGrad.needsUpdate = true;
 const glbCache = {};
-const CHAR_V = '20261115-3'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
+const CHAR_V = '20261120-1'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
 function loadGlb(kind) {
   // 모델은 chars/<종류>.js 안에 base64로 들어 있음 (아티팩트가 .glb를 직접 못 올려서)
   return glbCache[kind] ??= import(`./chars/${kind}.js?v=${CHAR_V}`).then(m => new Promise((ok, no) => {
@@ -989,7 +989,7 @@ function loadGlb(kind) {
 }
 function rigFromGlb(src) {
   const m = cloneSkinned(src); // 뼈대로 몸이 휘는 모델(훈제)도 뼈까지 같이 복제
-  m.traverse(o => { if (o.isMesh) { const map = o.material.map; const vc = !!o.geometry.attributes.color; o.material = new THREE.MeshToonMaterial(map ? { map, gradientMap: charGrad, emissive: 0x161412 } : vc ? { vertexColors: true, gradientMap: charGrad, emissive: 0x161412 } : { color: o.material.color.clone(), gradientMap: charGrad, emissive: 0x161412 }); /* 단색 재질(부리·눈·코)은 그 색 그대로 */ o.castShadow = true; o.receiveShadow = true; } });
+  m.traverse(o => { if (o.isMesh) { const map = o.material.map; const vc = !!o.geometry.attributes.color; o.material = new THREE.MeshToonMaterial(map ? { map, gradientMap: charGrad, emissive: 0x141414 } : vc ? { vertexColors: true, gradientMap: charGrad, emissive: 0x141414 } : { color: o.material.color.clone(), gradientMap: charGrad, emissive: 0x141414 }); /* 단색 재질(부리·눈·코)은 그 색 그대로 */ o.castShadow = true; o.receiveShadow = true; } });
   const J = {}; ['hip', 'head', 'armL', 'armR', 'legL', 'legR', 'tail'].forEach(n => { J[n] = m.getObjectByName(n); if (J[n]) J[n].userData.base = J[n].position.clone(); });
   m.scale.setScalar(0.92);
   return { model: m, J };
