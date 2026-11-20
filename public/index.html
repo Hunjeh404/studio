@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>우리 집</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #f4f2ec; overflow: hidden; font-family: sans-serif; color: #3a3739; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  html, body { margin: 0; height: 100%; background: #f5f5f4; overflow: hidden; font-family: sans-serif; color: #3a3739; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   canvas { display: block; touch-action: none; }
   .ui { position: fixed; z-index: 5; }
   .pill { background: rgba(255, 252, 244, .94); border: 1.5px solid #b8a07a; border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
@@ -118,7 +118,7 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadow
 document.body.appendChild(renderer.domElement);
 renderer.shadowMap.autoUpdate = false;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#f4f2ec');
+scene.background = new THREE.Color('#f5f5f4');
 const grad = new THREE.DataTexture(new Uint8Array([115, 160, 205, 240, 255]), 5, 1, THREE.RedFormat);
 grad.minFilter = grad.magFilter = THREE.LinearFilter; grad.needsUpdate = true;
 const mats = {};
@@ -643,8 +643,9 @@ const SEA = { x0: -14, x1: 12, z0: -12, z1: 13.5, top: -0.32, bed: -1.0 };
   add(world, box(W, 0.3, D), '#f7e9c6', cx, SEA.bed - 0.15, cz);
   add(world, box(W, 0.32, D), '#d9a873', cx, SEA.bed - 0.46, cz);
   add(world, box(W, 0.22, D), '#a97a52', cx, SEA.bed - 0.73, cz);
+  add(world, box(W - 0.04, 0.02, D - 0.04), '#8fe3e6', cx, SEA.bed + 0.005, cz); // 물속 바닥: 맑은 물 아래 비치는 청록 모래
   // 물속 얕은 턱(밝은 모래) + 섬 모래 + 가운데 풀밭
-  add(world, slab(sc(1.07), SEA.top - 0.12 - SEA.bed), '#fbefd2', 0, SEA.bed, 0);
+  add(world, slab(sc(1.07), SEA.top - 0.12 - SEA.bed), '#c9f1ea', 0, SEA.bed, 0);
   add(world, slab(ISLAND, -0.1 - SEA.bed), '#fff4dc', 0, SEA.bed, 0);
   add(world, slab(sc(0.86), 0.04), '#a9de7a', 0, -0.1, 0);
   // 야자수: 뒤쪽·옆쪽
@@ -669,8 +670,8 @@ const SEA = { x0: -14, x1: 12, z0: -12, z1: 13.5, top: -0.32, bed: -1.0 };
 }
 
 // ================= 조명 =================
-scene.add(new THREE.HemisphereLight('#ffffff', '#d9d0c0', 1.0));
-const sun = new THREE.DirectionalLight('#fff6e6', 1.65);
+scene.add(new THREE.HemisphereLight('#ffffff', '#d6d8da', 1.0));
+const sun = new THREE.DirectionalLight('#ffffff', 1.65);
 sun.position.set(11, 14, -2); sun.target.position.set(-0.5, 0, 0.5);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 13, bottom: -13, far: 50 });
@@ -683,7 +684,7 @@ const baked = bake(world); scene.remove(world); scene.add(baked);
 const sea = new THREE.Group(); scene.add(sea);
 {
   const W = SEA.x1 - SEA.x0, D = SEA.z1 - SEA.z0, cx = (SEA.x0 + SEA.x1) / 2, cz = (SEA.z0 + SEA.z1) / 2, H = SEA.top - 0.01 - SEA.bed;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), new THREE.MeshToonMaterial({ color: '#00b2d6', gradientMap: grad, transparent: true, opacity: 0.8, depthWrite: false }));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), new THREE.MeshToonMaterial({ color: '#00bfe0', gradientMap: grad, transparent: true, opacity: 0.45, depthWrite: false }));
   body.position.set(cx, SEA.bed + H / 2, cz); sea.add(body);
   const surf = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.ShaderMaterial({
     uniforms: { t: { value: 0 }, base: { value: new THREE.Color('#12bcd8') }, hi: { value: new THREE.Color('#ffffff') } },
@@ -696,7 +697,7 @@ const sea = new THREE.Group(); scene.add(sea);
         c /= 4.; c = 1.17 - pow(c, 1.4); return clamp(pow(abs(c), 8.), 0., 1.); }
       void main(){
         float k = caustic(vP * 0.2);
-        vec3 col = mix(base, hi, k * 0.85); float a = 0.22 + k * 0.55;
+        vec3 col = mix(base, hi, k * 0.85); float a = 0.1 + k * 0.5;
         gl_FragColor = vec4(col, a);
       }`,
     transparent: true, depthWrite: false,
@@ -953,7 +954,7 @@ function lineWidth() { // 확대(2.6배 이상)에서 지금 굵기, 축소할�
   const w = Math.max(1, Math.round(lw)); postMat.uniforms.px.value.set(w / tw, w / th); // 이웃 픽셀 간격은 정수로 (소수면 선이 두 겹으로 갈라짐) postMat.uniforms.ink.value = Math.min(1, lw);
 }
 function renderFrame() {
-  scene.background = new THREE.Color('#f4f2ec');
+  scene.background = new THREE.Color('#f5f5f4');
   renderer.shadowMap.needsUpdate = true;
   renderer.setRenderTarget(rtC); renderer.render(scene, camera);
   scene.background = null; renderer.setClearColor(0x8080ff, 1);
