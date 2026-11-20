@@ -1,8 +1,9 @@
 # Hunyuan 3D GLB를 집 앱 캐릭터 형식으로 바꿈: 키 0.95m·발바닥 y=0·앞 +z, 관절 8개(root, hip, head, armL/R, legL/R, tail, 회전 없이 위치만),
 # 위치 규칙으로 정한 스킨 가중치, 기본색 텍스처 하나(2048 JPG, 크림색 흰 털은 중립 흰색으로)
-# 사용: python3 -I from_hunyuan.py <in.glb> <out.js> [--auto]   (--auto: 팔이 몸통에 붙은 체형은 블렌더 자동 가중치로, autoweight.py)
+# 사용: python3 -I from_hunyuan.py <in.glb> <out.js> [--auto] [--no-white]   (--no-white: 흰 털 보정 안 함. 분홍·크림처럼 옅은 색이 많은 캐릭터)
+#   (--auto: 팔이 몸통에 붙은 체형은 블렌더 자동 가중치로, autoweight.py)
 import sys, os, io, base64, struct, subprocess, tempfile, numpy as np, pygltflib
-AUTO = '--auto' in sys.argv; sys.argv = [a for a in sys.argv if a != '--auto']
+AUTO = '--auto' in sys.argv; NOWHITE = '--no-white' in sys.argv; sys.argv = [a for a in sys.argv if a not in ('--auto', '--no-white')]
 from PIL import Image
 
 src, out_js = sys.argv[1:3]
@@ -84,7 +85,7 @@ mx = im.max(2); mn = im.min(2); sat = (mx - mn) / np.maximum(mx, 1e-4); L = im @
 r, gg, bb = im[..., 0], im[..., 1], im[..., 2]
 warm = np.clip((r - bb) / 0.02, 0, 1) * np.clip((r - gg + 0.01) / 0.02, 0, 1) * np.clip(((gg - bb) / np.maximum(r - bb, 1e-3) - 0.3) / 0.15, 0, 1)
 neutral = np.clip((0.04 - (mx - mn)) / 0.02, 0, 1)
-wm = np.clip((0.3 - sat) / 0.07, 0, 1) * np.clip((mx - 0.35) / 0.15, 0, 1) * np.maximum(warm, neutral)
+wm = np.clip((0.3 - sat) / 0.07, 0, 1) * np.clip((mx - 0.35) / 0.15, 0, 1) * np.maximum(warm, neutral) * (0 if NOWHITE else 1)
 im = im * (1 - wm[..., None]) + np.minimum(1, L * 1.13)[..., None].repeat(3, 2) * wm[..., None]
 buf = io.BytesIO(); Image.fromarray((im * 255).round().astype(np.uint8)).save(buf, 'JPEG', quality=88); JPG = buf.getvalue()
 
