@@ -109,7 +109,7 @@ const HOUSE_RECTS = [[-8.5, -3, -3, 3], [-3, 3, -3, 3], [-3, 2, -7, -3], [3, 6.5
 const insideHouse = (x, z) => HOUSE_RECTS.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
 const ANIMALS = { bear: '곰', cat: '고양이', tiger: '호랑이', dog: '강아지', penguin: '펭귄', rabbit: '토끼',
   siamese: '샴고양이', lion: '숫사자', otter: '해달', hoonjay: '훈제', kitten: '연어' };
-const ANIMAL_ONLY = { hoonjay: ['dad', 'mom'], kitten: ['dad', 'mom'] }; // 이 계정에서만 고를 수 있는 캐릭터
+const ANIMAL_ONLY = { hoonjay: ['dad', 'mom', 'kid'], kitten: ['dad', 'mom', 'kid'] }; // 이 계정에서만 고를 수 있는 캐릭터 (손님 제외)
 const animalOk = (k, a) => !!ANIMALS[k] && (!ANIMAL_ONLY[k] || ANIMAL_ONLY[k].includes(a));
 const START = { studio: [-4.8, 5.0], master: [-5.3, 0.6], kid: [-0.5, -5.0], garden: [1.6, 7.8] };
 
