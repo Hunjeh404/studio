@@ -628,7 +628,7 @@ if (!FURN.garden_gate) add(P, box(1.0, 0.04, 0.03), C.ink, 1.6, 0.62, 8.2); ob(1
 // 카메라가 앞(+x,+z)에서 보므로 키 큰 야자수는 뒤쪽·옆쪽에만, 앞쪽은 낮은 덤불만
 const SEA = { x0: -14, x1: 12, z0: -12, z1: 13.5, top: -0.32, bed: -1.0 };
 {
-  const ISLAND = [[-12, -5], [-9.5, -9], [-4, -10.5], [3, -10.3], [8.5, -7.5], [10.5, -2], [10.3, 4], [9.2, 10], [5, 11.6], [-1, 11.6], [-6.5, 10.4], [-10.8, 7.5], [-12.3, 1.5]].map(([x, z]) => [x * 0.92, z * 0.92]);
+  const ISLAND = SEA.island = [[-12, -5], [-9.5, -9], [-4, -10.5], [3, -10.3], [8.5, -7.5], [10.5, -2], [10.3, 4], [9.2, 10], [5, 11.6], [-1, 11.6], [-6.5, 10.4], [-10.8, 7.5], [-12.3, 1.5]].map(([x, z]) => [x * 0.92, z * 0.92]);
   const sc = (k) => ISLAND.map(([x, z]) => [x * k, z * k]);
   // 블록 단면: 바닥 모래층 + 흙층 두 겹
   const W = SEA.x1 - SEA.x0, D = SEA.z1 - SEA.z0, cx = (SEA.x0 + SEA.x1) / 2, cz = (SEA.z0 + SEA.z1) / 2;
@@ -672,22 +672,26 @@ const sea = new THREE.Group(); scene.add(sea);
   const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), new THREE.MeshToonMaterial({ color: '#00b2d6', gradientMap: grad, transparent: true, opacity: 0.8, depthWrite: false }));
   body.position.set(cx, SEA.bed + H / 2, cz); sea.add(body);
   const surf = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.ShaderMaterial({
-    uniforms: { t: { value: 0 }, base: { value: new THREE.Color('#12bcd8') }, hi: { value: new THREE.Color('#ffffff') }, sunDir: { value: sun.position.clone().sub(sun.target.position).normalize() }, viewDir: { value: new THREE.Vector3(0, 1, 0) } },
+    uniforms: { t: { value: 0 }, base: { value: new THREE.Color('#12bcd8') }, hi: { value: new THREE.Color('#ffffff') } },
     vertexShader: 'varying vec2 vP; void main(){ vec4 w = modelMatrix * vec4(position, 1.); vP = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }',
-    fragmentShader: `uniform float t; uniform vec3 base, hi, sunDir, viewDir; varying vec2 vP;
-      float W(vec2 p){ return sin(p.x * 1.7 + t * 0.7 + sin(p.y * 0.9 + t * 0.4) * 1.3) * sin(p.y * 1.4 - t * 0.6 + sin(p.x * 0.7) * 1.1)
-        + 0.35 * sin(p.x * 4.3 - t * 1.3 + p.y * 2.1) * sin(p.y * 3.7 + t * 1.1); }
+    fragmentShader: `uniform float t; uniform vec3 base, hi; varying vec2 vP;
+      float caustic(vec2 uv){ // 물속 바닥에 비친 그물 무늬 빛
+        vec2 p = mod(uv * 6.28318, 6.28318) - 250., i = p; float c = 1.;
+        for (int n = 0; n < 4; n++) { float tt = t * 0.35 * (1. - 3.5 / float(n + 1)); i = p + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
+          c += 1. / length(vec2(p.x / (sin(i.x + tt) / .005), p.y / (cos(i.y + tt) / .005))); }
+        c /= 4.; c = 1.17 - pow(c, 1.4); return clamp(pow(abs(c), 8.), 0., 1.); }
       void main(){
-        vec2 p = vP; float w = W(p), e = 0.05;
-        vec3 n = normalize(vec3(-(W(p + vec2(e, 0.)) - w) / e * 0.22, 1., -(W(p + vec2(0., e)) - w) / e * 0.22));
-        float sp = pow(max(dot(n, normalize(sunDir + viewDir)), 0.), 160.) * 1.6;
-        float h = smoothstep(0.85, 0.9, w) * 0.55;
-        float a = clamp(0.25 + h * 0.5 + sp, 0., 1.);
-        gl_FragColor = vec4(mix(base, hi, clamp(h + sp, 0., 1.)), a);
+        float k = caustic(vP * 0.2);
+        vec3 col = mix(base, hi, k * 0.85); float a = 0.22 + k * 0.55;
+        gl_FragColor = vec4(col, a);
       }`,
     transparent: true, depthWrite: false,
   }));
   surf.rotation.x = -Math.PI / 2; surf.position.set(cx, SEA.top, cz); sea.add(surf); sea.userData.surf = surf;
+  const ring = (k) => SEA.island.map(([x, z]) => new THREE.Vector2(x * k, -z * k));
+  const fs = new THREE.Shape(ring(1.035)); fs.holes.push(new THREE.Path(ring(0.995)));
+  const foam = new THREE.Mesh(new THREE.ShapeGeometry(fs, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.7, depthWrite: false }));
+  foam.rotation.x = -Math.PI / 2; foam.position.y = SEA.top + 0.004; sea.add(foam); sea.userData.foam = foam;
   // 물고기(+z를 봄)와 가오리
   function fish(col, fin) {
     const g = new THREE.Group(), b = new THREE.Mesh(sph(1), M(col)); b.scale.set(0.07, 0.08, 0.17); g.add(b);
@@ -709,7 +713,8 @@ const sea = new THREE.Group(); scene.add(sea);
   sea.userData.swimmers = LOOPS.map(([x, z, rx, rz, y, v, k], i) => { const o = k === 'ray' ? ray() : fish(k, '#fff1c9'); o.position.y = y; sea.add(o); return { o, x, z, rx, rz, v, ph: i * 2.1 + (i % 2) * Math.PI }; });
 }
 function updateSea(t) {
-  const u = sea.userData.surf.material.uniforms; u.t.value = t; camera.getWorldDirection(u.viewDir.value).negate();
+  const u = sea.userData.surf.material.uniforms; u.t.value = t;
+  const f = sea.userData.foam; f.material.opacity = 0.55 + 0.2 * Math.sin(t * 1.3); f.scale.setScalar(1 + 0.004 * Math.sin(t * 1.3));
   sea.userData.swimmers.forEach(({ o, x, z, rx, rz, v, ph }) => {
     const a = ph + t * v / ((rx + rz) / 2), s = Math.sign(v);
     o.position.x = x + Math.cos(a) * rx; o.position.z = z + Math.sin(a) * rz;
