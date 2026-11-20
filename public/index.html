@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>우리 집</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #ede7d6; overflow: hidden; font-family: sans-serif; color: #3a3739; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  html, body { margin: 0; height: 100%; background: #f4f2ec; overflow: hidden; font-family: sans-serif; color: #3a3739; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   canvas { display: block; touch-action: none; }
   .ui { position: fixed; z-index: 5; }
   .pill { background: rgba(255, 252, 244, .94); border: 1.5px solid #b8a07a; border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
@@ -64,6 +64,16 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+// 부드러운 툰: 모든 툰 재질에 은은한 반사광(햇빛 하이라이트)과 가장자리 밝은 테두리를 더함
+THREE.ShaderLib.toon.fragmentShader = THREE.ShaderLib.toon.fragmentShader.replace('#include <opaque_fragment>', `
+  vec3 vdir = isOrthographic ? vec3(0., 0., 1.) : normalize(vViewPosition);
+  float rim = pow(1. - saturate(dot(normal, vdir)), 3.);
+  outgoingLight += vec3(1., .97, .9) * rim * .16;
+  #if NUM_DIR_LIGHTS > 0
+    float sp = pow(saturate(dot(normal, normalize(directionalLights[0].direction + vdir))), 28.);
+    outgoingLight += directionalLights[0].color * sp * .14;
+  #endif
+  #include <opaque_fragment>`);
 
 // ================= 설정: 앱 주소는 여기만 고치면 됨 =================
 const ACCOUNTS = {
@@ -114,13 +124,13 @@ const START = { studio: [-4.8, 5.0], master: [-5.3, 0.6], kid: [-0.5, -5.0], gar
 // ================= CORE =================
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 renderer.shadowMap.autoUpdate = false;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#ede7d6');
-const grad = new THREE.DataTexture(new Uint8Array([155, 212, 255]), 3, 1, THREE.RedFormat);
-grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+scene.background = new THREE.Color('#f4f2ec');
+const grad = new THREE.DataTexture(new Uint8Array([115, 160, 205, 240, 255]), 5, 1, THREE.RedFormat);
+grad.minFilter = grad.magFilter = THREE.LinearFilter; grad.needsUpdate = true;
 const mats = {};
 const M = (c) => mats[c] ??= new THREE.MeshToonMaterial({ color: c, gradientMap: grad });
 const glassMat = new THREE.MeshToonMaterial({ color: '#dfeaf3', gradientMap: grad, transparent: true, opacity: 0.55 });
@@ -161,7 +171,7 @@ const FURN = {}, furnMat = new THREE.MeshToonMaterial({ vertexColors: true, grad
 await Promise.all(['sofa', 'armchair', 'piano', 'piano_bench', 'metronome', 'round_table', 'low_bookshelf', 'bird_plush', 'garden_bench', 'tea_table', 'garden_chair',
   'master_bed', 'window_curtain', 'kid_curtain', 'dresser', 'uniform_rack', 'player_table', 'phonics_corner', 'bed_bench', 'screening_desk', 'daw_cabinet',
   'synth_stand', 'lyric_screen', 'tube_amp_mic', 'wall_panel', 'kid_bed', 'laurel_bookshelf', 'tower_typewriter', 'study_desk', 'english_mat', 'front_door',
-  'bathtub', 'brush_sink', 'wardrobe', 'standing_mirror', 'stage_platform', 'garden_gate', 'stone_fence', 'round_tree', 'cone_tree', 'flower_bed', 'bush', 'stepping_stone', 'word_maze_board'].map(k =>
+  'bathtub', 'brush_sink', 'wardrobe', 'standing_mirror', 'stage_platform', 'garden_gate', 'word_maze_board'].map(k =>
   import(`./furn/${k}.js`).then(mod => new Promise(ok => new GLTFLoader().parse(Uint8Array.from(atob(mod.default), c => c.charCodeAt(0)).buffer, '',
     g => { g.scene.traverse(o => { if (o.isMesh) FURN[k] = o.geometry; }); ok(); }, () => ok()))).catch(() => {})));
 function furn(k, x, z, ry = 0, y = 0, s = 1) { if (!FURN[k]) return false; const o = add(P, FURN[k], furnMat, x, y, z); o.rotation.y = ry; if (Array.isArray(s)) o.scale.multiply(new THREE.Vector3(...s)); else o.scale.multiplyScalar(s); return true; }
@@ -280,12 +290,24 @@ const tiles = canvasMat(256, 256, (c, w, h) => { c.fillStyle = '#c9d8e6'; c.fill
 const ROOMS = { master: [-8.5, -3, -3, 3], living: [-3, 3, -3, 3], kid: [-3, 2, -7, -3], bath: [3, 6.5, -3, 0.5], studio: [-6.5, -3, 3, 6.5], dress: [-3, 0, 3, 6.5] };
 Object.entries(ROOMS).forEach(([k, [x0, x1, z0, z1]], i) => { add(world, box(x1 - x0, 0.1, z1 - z0), k === 'bath' ? tiles : planks, (x0 + x1) / 2, -0.05, (z0 + z1) / 2); add(world, box(x1 - x0 + T - i * 0.004, 0.3 - i * 0.004, z1 - z0 + T - i * 0.004), '#d8cbb3', (x0 + x1) / 2, -0.25 - i * 0.003, (z0 + z1) / 2); });
 // 정원 바닥
-add(world, box(5.5, 0.1, 5.2), C.grass, 2.75, -0.06, 5.6); add(world, box(5.7, 0.3, 5.4), '#c9b89a', 2.75, -0.26, 5.6);
+const deck = canvasMat(256, 256, (c, w, h) => { c.fillStyle = '#efd9b0'; c.fillRect(0, 0, w, h); for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#ead2a6' : '#f3dfba'; c.fillRect(i * 32, 0, 30, h); c.fillStyle = '#d4b688'; c.fillRect(i * 32 + 30, 0, 2, h); c.fillRect(i * 32, ((i * 83) % 180) + 30, 30, 2); } });
+add(world, box(5.5, 0.1, 5.2), deck, 2.75, -0.06, 5.6); add(world, box(5.7, 0.3, 5.4), '#c9a477', 2.75, -0.26, 5.6);
 
 // ================= 소품 도우미 =================
 function plant(x, z, s = 1, potCol = C.white) {
   add(P, cyl(0.17 * s, 0.13 * s, 0.3 * s, 10), potCol, x, 0.15 * s, z);
   add(P, ball(0.26 * s), C.leaf, x, 0.5 * s, z); add(P, ball(0.18 * s), C.leafD, x + 0.12 * s, 0.68 * s, z - 0.05 * s); add(P, ball(0.16 * s), C.leaf, x - 0.1 * s, 0.74 * s, z + 0.06 * s);
+}
+function palm(par, x, z, s = 1, lean = 0) { // 휜 줄기 + 늘어진 잎
+  const dx = Math.cos(lean), dz = Math.sin(lean); let px = x, pz = z, py = 0;
+  for (let i = 0; i < 7; i++) { const t = i / 6, k = 0.05 * s * i * i * 0.35;
+    add(par, cyl(0.075 * s * (1 - t * 0.3), 0.09 * s * (1 - t * 0.3), 0.34 * s, 8), i % 2 ? '#d8b483' : '#c79d6b', px + dx * k, py + 0.17 * s, pz + dz * k); py += 0.32 * s; }
+  const k = 0.05 * s * 36 * 0.35, tx = px + dx * k, tz = pz + dz * k, ty = py;
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + 0.3, g = new THREE.Group(); g.position.set(tx, ty, tz); g.rotation.y = a; par.add(g);
+    const col = i % 2 ? '#4fbf5e' : '#6fd36b';
+    const f1 = add(g, box(0.2 * s, 0.03 * s, 0.6 * s), col, 0, 0.05 * s, 0.28 * s); f1.rotation.x = -0.35;
+    const f2 = add(g, box(0.16 * s, 0.03 * s, 0.55 * s), col, 0, -0.12 * s, 0.78 * s); f2.rotation.x = 0.45; }
+  [[0.09, 0], [-0.06, 0.08], [-0.04, -0.09]].forEach(([a, b]) => add(par, sph(0.07 * s), '#8a6a3e', tx + a * s, ty - 0.08 * s, tz + b * s));
 }
 function lamp(x, y, z) { add(P, cyl(0.06, 0.08, 0.04, 10), C.goldD, x, y + 0.02, z); add(P, cyl(0.015, 0.015, 0.3, 6), C.goldD, x, y + 0.17, z); add(P, cyl(0.08, 0.14, 0.16, 12), C.gold, x, y + 0.36, z); }
 function books(x0, y, z, n, dir = 'x', depth = 0.22) {
@@ -580,8 +602,6 @@ plant(-3.45, 6.1, 0.8);
 
 section(0);
 // ================= 정원 =================
-const stoneCols = ['#ece8e8', '#dfd9e6', '#ebe2d6', '#e3ddd2'];
-for (let i = 0; i < 9; i++) { const z = 3.5 + i * 0.5, x = 1.6 + Math.sin(i * 1.7) * 0.12; if (!furn('stepping_stone', x, z, i * 1.3, -0.005)) add(P, cyl(0.27, 0.29, 0.05, 9), stoneCols[i % 4], x, 0.02, z); }
 add(P, box(1.2, 0.08, 0.6), '#e2ddd6', 1.6, 0.04, 3.35);
 // 벤치
 if (!furn('garden_bench', 0.545, 5.8, Math.PI / 2)) {
@@ -596,11 +616,11 @@ add(P, cyl(0.07, 0.06, 0.1, 10), C.white, 3.95, 0.7, 5.35); add(P, sph(0.06), C.
 }
 [[3.3, 5.4, Math.PI / 2], [4.7, 5.4, -Math.PI / 2]].forEach(([x, z, r]) => { if (furn('garden_chair', x, z, r)) return; const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = r; P.add(g); add(g, cyl(0.28, 0.25, 0.42, 14), '#d9bf94', 0, 0.21, 0); add(g, box(0.56, 0.4, 0.1), '#d9bf94', 0, 0.6, -0.24); add(g, cyl(0.24, 0.24, 0.06, 14), C.white, 0, 0.45, 0); });
 ob(2.98, 5.02, 5.0, 5.8); TAG = null;
-// 울타리 (낮은 돌담) + 대문
+// 울타리 (낮은 나무 난간) + 대문
 function fence(axis, fixed, a, b) {
-  if (!FURN.stone_fence) return wall(axis, fixed, a, b, 0.45, [], '#f1ece1');
-  const n = Math.max(1, Math.round(b - a)), L = (b - a) / n; // 돌담 조각을 이어 붙임
-  for (let i = 0; i < n; i++) { const c = a + (i + 0.5) * L; if (axis === 'x') furn('stone_fence', c, fixed, 0, 0, [L, 1, 1]); else furn('stone_fence', fixed, c, Math.PI / 2, 0, [L, 1, 1]); }
+  const n = Math.max(1, Math.round((b - a) / 0.9)), L = (b - a) / n, at = (u, y, w, h, d) => axis === 'x' ? add(P, box(w, h, d), '#fbf6ea', u, y, fixed) : add(P, box(d, h, w), '#fbf6ea', fixed, y, u);
+  for (let i = 0; i <= n; i++) at(a + i * L, 0.3, 0.1, 0.6, 0.1);
+  at((a + b) / 2, 0.55, b - a, 0.06, 0.07); at((a + b) / 2, 0.3, b - a, 0.05, 0.05);
   if (axis === 'x') ob(a, b, fixed - T / 2, fixed + T / 2); else ob(fixed - T / 2, fixed + T / 2, a, b);
 }
 fence('z', 5.5, 3, 8.2); fence('x', 8.2, 0, 1.0); fence('x', 8.2, 2.2, 5.5); fence('z', 0, 6.5, 8.2); fence('x', 3, 3, 5.5);
@@ -611,69 +631,99 @@ if (!FURN.garden_gate) {
 for (let i = 0; i < 6; i++) add(P, cyl(0.015, 0.015, 0.65, 4), C.ink, 1.15 + i * 0.18, 0.33, 8.2);
 }
 if (!FURN.garden_gate) add(P, box(1.0, 0.04, 0.03), C.ink, 1.6, 0.62, 8.2); ob(1.0, 2.2, 8.1, 8.3);
-// 꽃밭
-function flowerBed(x, z, n, spread) {
-  for (let i = 0; i < n; i++) { const a = i * 2.4, r = spread * Math.sqrt((i + 0.5) / n), px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
-    add(P, ball(0.16 + (i % 3) * 0.03), i % 2 ? C.leaf : C.leafD, px, 0.15, pz); add(P, sph(0.05), i % 3 === 0 ? C.lav : C.white, px, 0.32, pz + 0.05); }
-}
-if (FURN.flower_bed) [[4.35, 5.4, 3.1, 4.0], [4.25, 5.4, 7.0, 8.1], [2.7, 3.7, 7.25, 8.1], [0.1, 0.9, 7.15, 8.1], [0.1, 0.8, 3.15, 3.85], [3.25, 3.95, 3.15, 3.85]].forEach(([x0, x1, z0, z1]) => furn('flower_bed', (x0 + x1) / 2, (z0 + z1) / 2, 0, 0, [(x1 - x0) * 0.95, 1, (z1 - z0) * 0.95]));
-else { flowerBed(4.85, 3.55, 7, 0.4); flowerBed(4.8, 7.55, 8, 0.45); flowerBed(3.2, 7.75, 7, 0.4); flowerBed(0.5, 7.6, 6, 0.35); flowerBed(0.45, 3.5, 5, 0.3); flowerBed(3.6, 3.5, 5, 0.3); }
-ob(4.35, 5.4, 3.1, 4.0); ob(4.25, 5.4, 7.0, 8.1); ob(2.7, 3.7, 7.25, 8.1); ob(0.1, 0.9, 7.15, 8.1); ob(0.1, 0.8, 3.15, 3.85); ob(3.25, 3.95, 3.15, 3.85);
-[[5.1, 6.4], [0.4, 4.35], [2.7, 6.9]].forEach(([x, z]) => { if (!furn('cone_tree', x, z, 0, 0, 0.7)) { add(P, new THREE.ConeGeometry(0.3, 1.3, 9), C.leafD, x, 0.75, z); add(P, cyl(0.06, 0.06, 0.2, 6), C.woodD, x, 0.1, z); } ob(x - 0.3, x + 0.3, z - 0.3, z + 0.3); });
+[[5.1, 6.4, 2.3], [0.4, 4.35, 0.6], [2.7, 6.9, 1.4]].forEach(([x, z, l]) => { palm(P, x, z, 0.62, l); ob(x - 0.3, x + 0.3, z - 0.3, z + 0.3); });
 
 
-// ================= 집 둘레 정원 (꾸밈, 걸어 다니는 곳은 아님) =================
-// 카메라가 앞(+x,+z)에서 보므로 키 큰 나무는 뒤쪽·옆쪽에만, 앞쪽은 낮은 꽃밭과 덤불만
+// ================= 섬 (바다 블록 위 모래섬, 꾸밈 — 걸어 다니는 곳은 마당까지) =================
+// 카메라가 앞(+x,+z)에서 보므로 키 큰 야자수는 뒤쪽·옆쪽에만, 앞쪽은 낮은 덤불만
+const SEA = { x0: -14, x1: 12, z0: -12, z1: 13.5, top: -0.32, bed: -1.0 };
 {
-  const ISLAND = [[-12, -5], [-9.5, -9], [-4, -10.5], [3, -10.3], [8.5, -7.5], [10.5, -2], [10.3, 4], [9.2, 10], [5, 11.6], [-1, 11.6], [-6.5, 10.4], [-10.8, 7.5], [-12.3, 1.5]];
-  add(world, slab(ISLAND, 0.36), '#c9b89a', 0, -0.47, 0);
-  const inner = ISLAND.map(([x, z]) => [x * 0.985, z * 0.985]);
-  add(world, slab(inner, 0.06), '#c3d4a6', 0, -0.13, 0);
-  // 뒤쪽 큰 나무 (둥근 나무 + 원뿔 나무)
-  function roundTree(x, z, s = 1, leaf = C.leaf) {
-    if (furn('round_tree', x, z, x, -0.1, 1.15 * s)) return;
-    add(world, cyl(0.1 * s, 0.14 * s, 1.0 * s, 8), C.woodD, x, 0.5 * s - 0.1, z);
-    add(world, ball(0.75 * s, 1), leaf, x, 1.45 * s, z); add(world, ball(0.55 * s, 1), C.leafD, x + 0.35 * s, 1.25 * s, z + 0.2 * s); add(world, ball(0.5 * s, 1), '#a3c4a8', x - 0.3 * s, 1.75 * s, z - 0.15 * s);
+  const ISLAND = [[-12, -5], [-9.5, -9], [-4, -10.5], [3, -10.3], [8.5, -7.5], [10.5, -2], [10.3, 4], [9.2, 10], [5, 11.6], [-1, 11.6], [-6.5, 10.4], [-10.8, 7.5], [-12.3, 1.5]].map(([x, z]) => [x * 0.92, z * 0.92]);
+  const sc = (k) => ISLAND.map(([x, z]) => [x * k, z * k]);
+  // 블록 단면: 바닥 모래층 + 흙층 두 겹
+  const W = SEA.x1 - SEA.x0, D = SEA.z1 - SEA.z0, cx = (SEA.x0 + SEA.x1) / 2, cz = (SEA.z0 + SEA.z1) / 2;
+  add(world, box(W, 0.3, D), '#f7e9c6', cx, SEA.bed - 0.15, cz);
+  add(world, box(W, 0.32, D), '#d9a873', cx, SEA.bed - 0.46, cz);
+  add(world, box(W, 0.22, D), '#a97a52', cx, SEA.bed - 0.73, cz);
+  // 물속 얕은 턱(밝은 모래) + 섬 모래 + 가운데 풀밭
+  add(world, slab(sc(1.07), SEA.top - 0.12 - SEA.bed), '#fbefd2', 0, SEA.bed, 0);
+  add(world, slab(ISLAND, -0.1 - SEA.bed), '#fff4dc', 0, SEA.bed, 0);
+  add(world, slab(sc(0.86), 0.04), '#a9de7a', 0, -0.1, 0);
+  // 야자수: 뒤쪽·옆쪽
+  [[-10.4, -5.2, 1.15, 2.6], [-10.6, -1.2, 1.0, 3.3], [-6.2, -8.4, 1.2, 4.2], [1.2, -8.6, 1.05, 4.6], [7.6, -5.4, 1.1, 5.4], [-9.9, 5.6, 0.95, 2.4],
+   [-10.6, 2.4, 0.85, 3.0], [-8.0, -7.4, 0.9, 3.9], [-2.6, -8.9, 1.0, 4.4], [4.6, -7.6, 0.95, 5.0], [8.8, -2.2, 0.9, 5.8], [-8.4, 8.2, 0.85, 2.0]].forEach(([x, z, s, l]) => palm(world, x, z, s, l));
+  // 앞쪽: 키 낮은 열대 덤불
+  function bush(x, z, s = 1) {
+    add(world, ball(0.32 * s, 1), '#6fd36b', x, 0.2 * s, z); add(world, ball(0.24 * s, 1), '#4fbf5e', x + 0.25 * s, 0.15 * s, z - 0.1 * s); add(world, ball(0.22 * s, 1), '#8fe07f', x - 0.22 * s, 0.17 * s, z + 0.12 * s);
   }
-  function coneTree(x, z, s = 1) { if (furn('cone_tree', x, z, 0, -0.08, s)) return; add(world, new THREE.ConeGeometry(0.42 * s, 1.9 * s, 10), C.leafD, x, 1.0 * s, z); add(world, cyl(0.07 * s, 0.08 * s, 0.25 * s, 6), C.woodD, x, 0.05, z); }
-  [[-10.4, -5.2, 1.1], [-10.6, -1.2, 1.0], [-6.2, -8.6, 1.15], [1.2, -8.8, 1.05], [7.6, -5.4, 1.0], [-9.9, 5.6, 0.95]].forEach(([x, z, s]) => roundTree(x, z, s));
-  [[-11.2, 2.6, 1.0], [-8.2, -7.6, 0.9], [-2.6, -9.3, 1.0], [4.6, -7.8, 0.95], [9.2, -2.2, 0.85], [-8.6, 8.6, 0.85]].forEach(([x, z, s]) => coneTree(x, z, s));
-  // 꽃 덤불
-  function bush(x, z, s = 1, flower) {
-if (!furn('bush', x, z, x * 1.3, -0.1, s)) {
-    add(world, ball(0.32 * s, 1), C.leaf, x, 0.2 * s, z); add(world, ball(0.24 * s, 1), C.leafD, x + 0.25 * s, 0.15 * s, z - 0.1 * s); add(world, ball(0.22 * s, 1), '#a3c4a8', x - 0.22 * s, 0.17 * s, z + 0.12 * s);
-}
-    if (flower) for (let i = 0; i < 6; i++) { const a = i * 1.1; add(world, sph(0.055), flower, x + Math.cos(a) * 0.22 * s, 0.38 * s, z + Math.sin(a) * 0.2 * s); }
-  }
-  function flowers(x, z, n, r, cols) { for (let i = 0; i < n; i++) { const a = i * 2.4, d = r * Math.sqrt((i + 0.5) / n), px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
-    add(world, cyl(0.012, 0.012, 0.22, 4), C.leafD, px, 0.03, pz); add(world, sph(0.06), cols[i % cols.length], px, 0.16, pz); } }
-  const FL = [C.white, C.lav, '#f3c4c4', C.gold, '#bfd5ef'];
-  // 뒤쪽 벽 아래 낮은 꽃밭
-  for (let x = -8; x < -3.3; x += 1.1) bush(x, -3.55, 0.8, FL[(x * 7 | 0) % 5 + (x * 7 < 0 ? 4 : 0)] || C.lav);
-  for (let x = -2.4; x < 1.8; x += 1.05) bush(x, -7.55, 0.8, FL[Math.abs(x * 3 | 0) % 5]);
-  for (let z = -2.4; z < 2.6; z += 1.1) bush(-9.05, z, 0.85, FL[Math.abs(z * 3 | 0) % 5]);
-  [[4, -3.55], [5.3, -3.6], [6.2, -3.5]].forEach(([x, z], i) => bush(x, z, 0.75, FL[i]));
-  // 앞쪽: 키 낮은 덤불과 꽃밭만
-  for (let z = -2.6; z < 0.6; z += 0.9) bush(7.05, z, 0.6, FL[Math.abs(z * 5 | 0) % 5]);
-  for (let x = -6.2; x < 0; x += 0.95) bush(x, 7.05, 0.6, FL[Math.abs(x * 5 | 0) % 5]);
-  flowers(7.4, 3.2, 18, 0.8, [C.white, C.lav, '#f3c4c4']); flowers(7.6, 7.2, 22, 0.95, [C.gold, C.white, '#bfd5ef']);
-  flowers(4.2, 9.6, 18, 0.8, ['#f3c4c4', C.white, C.lav]); flowers(-1.8, 8.9, 18, 0.85, [C.lav, C.white, C.gold]); flowers(-5.2, 8.8, 16, 0.8, ['#bfd5ef', C.white, '#f3c4c4']);
-  flowers(-10.2, 4.0, 14, 0.7, [C.lav, C.white]); flowers(9.0, 0.6, 12, 0.6, [C.white, C.gold]);
-  [[6.5, 5.3], [8.6, 9.0], [2.6, 10.6], [-3.6, 10.2], [-8.2, 6.6], [9.4, 4.6]].forEach(([x, z], i) => bush(x, z, 0.7, FL[i % 5]));
-  // 대문 밖 디딤돌 길
-  for (let i = 0; i < 5; i++) { const x = 1.6 + Math.sin(i * 1.9) * 0.15, z = 8.75 + i * 0.55; if (!furn('stepping_stone', x, z, i * 1.3, -0.085)) add(world, cyl(0.26, 0.28, 0.05, 9), ['#ece8e8', '#dfd9e6', '#ebe2d6'][i % 3], x, -0.06, z); }
+  [[7.05, -2.2], [7.05, -0.4], [-5.6, 7.05], [-3.2, 7.05], [-1.0, 7.05], [6.5, 5.3], [7.8, 8.0], [3.2, 9.6], [-3.6, 9.4], [-8.0, 6.2], [8.6, 3.6]].forEach(([x, z], i) => bush(x, z, 0.65 + (i % 3) * 0.08));
+  // 대문 밖 선착장
+  const PZ0 = 8.35, PZ1 = 12.4;
+  add(world, box(1.15, 0.08, PZ1 - PZ0), deck, 1.6, -0.06, (PZ0 + PZ1) / 2);
+  for (let z = PZ0 + 0.3; z < PZ1; z += 1.25) [1.1, 2.1].forEach(x => add(world, cyl(0.07, 0.07, 1.1, 8), '#b98f5f', x, -0.5, z));
+  [1.05, 2.15].forEach(x => add(world, cyl(0.08, 0.08, 0.35, 8), '#b98f5f', x, 0.08, PZ1 - 0.15));
 }
 
 // ================= 조명 =================
-scene.add(new THREE.HemisphereLight('#ffffff', '#d9d0c0', 1.35));
-const sun = new THREE.DirectionalLight('#fffaf2', 1.15);
-sun.position.set(6, 14, 10); sun.target.position.set(-0.5, 0, 0.5);
+scene.add(new THREE.HemisphereLight('#ffffff', '#d9d0c0', 1.0));
+const sun = new THREE.DirectionalLight('#fff6e6', 1.65);
+sun.position.set(11, 14, -2); sun.target.position.set(-0.5, 0, 0.5);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 13, bottom: -13, far: 50 });
 scene.add(sun, sun.target);
 
 // 굽기
 const baked = bake(world); scene.remove(world); scene.add(baked);
+
+// ================= 바다: 반투명 물 + 반짝이는 물결 + 헤엄치는 물고기·가오리 (굽지 않음, 매 프레임 움직임) =================
+const sea = new THREE.Group(); scene.add(sea);
+{
+  const W = SEA.x1 - SEA.x0, D = SEA.z1 - SEA.z0, cx = (SEA.x0 + SEA.x1) / 2, cz = (SEA.z0 + SEA.z1) / 2, H = SEA.top - 0.01 - SEA.bed;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), new THREE.MeshToonMaterial({ color: '#00b2d6', gradientMap: grad, transparent: true, opacity: 0.8, depthWrite: false }));
+  body.position.set(cx, SEA.bed + H / 2, cz); sea.add(body);
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.ShaderMaterial({
+    uniforms: { t: { value: 0 }, base: { value: new THREE.Color('#12bcd8') }, hi: { value: new THREE.Color('#ffffff') } },
+    vertexShader: 'varying vec2 vP; void main(){ vec4 w = modelMatrix * vec4(position, 1.); vP = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform float t; uniform vec3 base, hi; varying vec2 vP;
+      void main(){
+        vec2 p = vP;
+        float w = sin(p.x * 1.7 + t * 0.7 + sin(p.y * 0.9 + t * 0.4) * 1.3) * sin(p.y * 1.4 - t * 0.6 + sin(p.x * 0.7) * 1.1);
+        float h = smoothstep(0.8, 0.86, w) * 0.8;
+        gl_FragColor = vec4(mix(base, hi, h), 0.25 + h * 0.6);
+      }`,
+    transparent: true, depthWrite: false,
+  }));
+  surf.rotation.x = -Math.PI / 2; surf.position.set(cx, SEA.top, cz); sea.add(surf); sea.userData.surf = surf;
+  // 물고기(+z를 봄)와 가오리
+  function fish(col, fin) {
+    const g = new THREE.Group(), b = new THREE.Mesh(sph(1), M(col)); b.scale.set(0.07, 0.08, 0.17); g.add(b);
+    const tail = new THREE.Group(); tail.position.z = -0.15; g.add(tail);
+    const tm = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.12, 4), M(fin)); tm.rotation.x = -Math.PI / 2; tm.scale.x = 0.3; tm.position.z = -0.05; tail.add(tm);
+    g.userData.tail = tail; return g;
+  }
+  function ray() {
+    const g = new THREE.Group(), b = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 4), M('#5a7f8c')); b.rotation.y = Math.PI / 4; b.scale.set(1, 1, 0.75); g.add(b);
+    const tl = new THREE.Mesh(cyl(0.012, 0.02, 0.6, 5), M('#4a6b76')); tl.rotation.x = Math.PI / 2; tl.position.z = -0.55; g.add(tl);
+    g.userData.wing = b; return g;
+  }
+  const LOOPS = [ // 중심x, 중심z, 반지름x, 반지름z, 깊이, 속도, 종류
+    [9.3, 11.3, 1.8, 1.2, -0.82, 0.35, 'ray'], [-11.9, -9.4, 1.0, 1.2, -0.82, -0.3, 'ray'],
+    [9.6, 11.0, 1.2, 0.8, -0.6, 0.9, '#ff9f43'], [9.6, 11.0, 1.2, 0.8, -0.64, 0.9, '#ffd23f'],
+    [-10.6, 10.6, 1.1, 1.0, -0.6, -0.8, '#4dabf7'], [-2.0, 12.4, 2.4, 0.45, -0.58, 0.6, '#ff8fab'], [-2.0, 12.4, 2.4, 0.45, -0.66, 0.6, '#ffd23f'],
+    [10.6, -9.5, 0.9, 1.4, -0.6, 0.8, '#ff9f43'], [11.0, 4.0, 0.5, 2.3, -0.6, -0.7, '#4dabf7'], [-11.9, -9.4, 0.8, 1.0, -0.6, 1.0, '#ff8fab'],
+  ];
+  sea.userData.swimmers = LOOPS.map(([x, z, rx, rz, y, v, k], i) => { const o = k === 'ray' ? ray() : fish(k, '#fff1c9'); o.position.y = y; sea.add(o); return { o, x, z, rx, rz, v, ph: i * 2.1 + (i % 2) * Math.PI }; });
+}
+function updateSea(t) {
+  sea.userData.surf.material.uniforms.t.value = t;
+  sea.userData.swimmers.forEach(({ o, x, z, rx, rz, v, ph }) => {
+    const a = ph + t * v / ((rx + rz) / 2), s = Math.sign(v);
+    o.position.x = x + Math.cos(a) * rx; o.position.z = z + Math.sin(a) * rz;
+    o.rotation.y = Math.atan2(-Math.sin(a) * rx * s, Math.cos(a) * rz * s);
+    if (o.userData.tail) o.userData.tail.rotation.y = Math.sin(t * 9 + ph) * 0.5;
+    if (o.userData.wing) o.userData.wing.scale.y = 1 + Math.sin(t * 2.5 + ph) * 0.8, o.rotation.z = Math.sin(t * 2.5 + ph) * 0.08;
+  });
+}
 
 // ================= 캐릭터 =================
 function animal(kind) {
@@ -801,7 +851,7 @@ function resize() {
   camera.position.copy(HOUSE_C).addScaledVector(camDir, 60); camera.lookAt(HOUSE_C); camera.updateMatrixWorld();
   const OUTL = [[-10.5, -3.1], [-3.1, -8.8], [2.1, -8.8], [8, -3.1], [8.2, 0.6], [7.5, 3], [7.5, 9.5], [0, 9.8], [-6.6, 8.8], [-10.5, 6.6]]; let mx = 0, my = 0;
   const c0 = HOUSE_C.clone().applyMatrix4(camera.matrixWorldInverse);
-  OUTL.forEach(([x, z]) => [-0.3, 2.7].forEach(y => { const p = new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse).sub(c0); mx = Math.max(mx, Math.abs(p.x)); my = Math.max(my, Math.abs(p.y)); }));
+  [...OUTL, [SEA.x0, SEA.z0], [SEA.x1, SEA.z0], [SEA.x1, SEA.z1], [SEA.x0, SEA.z1]].forEach(([x, z], i) => (i < OUTL.length ? [-0.3, 2.7] : [SEA.bed - 0.84, SEA.top]).forEach(y => { const p = new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse).sub(c0); mx = Math.max(mx, Math.abs(p.x)); my = Math.max(my, Math.abs(p.y)); }));
   baseHalf = Math.max(my, mx / a) * 1.04;
   Object.assign(camera, { left: -baseHalf * a, right: baseHalf * a, top: baseHalf, bottom: -baseHalf }); camera.updateProjectionMatrix();
   renderer.setSize(w, h);
@@ -858,14 +908,14 @@ const postMat = new THREE.ShaderMaterial({
       float lap = abs(D(dx) + D(-dx) - 2. * dc) + abs(D(dy) + D(-dy) - 2. * dc);
       vec3 nc = N(vec2(0.));
       float nd = max(max(1. - dot(nc, N(dx)), 1. - dot(nc, N(-dx))), max(1. - dot(nc, N(dy)), 1. - dot(nc, N(-dy))));
-      float e = max(smoothstep(0.02, 0.06, lap), smoothstep(0.18, 0.35, nd));
+      float e = max(smoothstep(0.03, 0.09, lap), smoothstep(0.3, 0.55, nd));
       // 선택 가능한 물건: 바깥쪽에 연한 금빛 테두리
       float m0 = texture2D(tM, vUv).r, g = 0.;
       for (int i = 0; i < 12; i++) { float a = float(i) * 0.5236; vec2 d = vec2(cos(a), sin(a));
         g = max(g, texture2D(tM, vUv + d * px * 2.).r); g = max(g, texture2D(tM, vUv + d * px * 3.5).r * 0.6); }
       g *= (1. - m0);
       vec3 c = mix(col.rgb, vec3(0.97, 0.84, 0.48), g * pulse);
-      c = mix(c, vec3(0.04, 0.036, 0.04), e * 0.85 * ink);
+      c = mix(c, col.rgb * 0.6, e * 0.45 * ink);
       gl_FragColor = vec4(c, 1.);
       #include <colorspace_fragment>
     }`,
@@ -880,11 +930,11 @@ function sizeTargets() {
 }
 let tw = 1, th = 1;
 function lineWidth() { // 확대(2.6배 이상)에서 지금 굵기, 축소할수록 가늘게
-  const pr = renderer.getPixelRatio(), full = 1.1 * Math.max(1, pr * 0.85), lw = full * THREE.MathUtils.clamp(zoom / 2.6, 0.35, 1);
+  const pr = renderer.getPixelRatio(), full = 1, lw = full * THREE.MathUtils.clamp(zoom / 2.6, 0.35, 1);
   const w = Math.max(1, Math.round(lw)); postMat.uniforms.px.value.set(w / tw, w / th); // 이웃 픽셀 간격은 정수로 (소수면 선이 두 겹으로 갈라짐) postMat.uniforms.ink.value = Math.min(1, lw);
 }
 function renderFrame() {
-  scene.background = new THREE.Color('#ede7d6');
+  scene.background = new THREE.Color('#f4f2ec');
   renderer.shadowMap.needsUpdate = true;
   renderer.setRenderTarget(rtC); renderer.render(scene, camera);
   scene.background = null; renderer.setClearColor(0x8080ff, 1);
@@ -1335,7 +1385,7 @@ else { const [x, z] = START[ACCOUNTS[acct].room]; spawnHero(x, z, 0); }
 setTimeout(() => { let i = 0; const ks = [...GLB_KINDS]; const next = () => { if (i < ks.length) loadGlb(ks[i++]).catch(() => {}).finally(() => setTimeout(next, 150)); }; next(); }, 2500);
 renderAcct(); checkBell(); sizeTargets(); updateCamera(0, true);
 const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); step(dt); applyAppVisibility(); updateCamera(dt); updateLabels(); renderFrame(); });
+renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); updateSea(performance.now() / 1000); step(dt); applyAppVisibility(); updateCamera(dt); updateLabels(); renderFrame(); });
 window.__V3 = THREE.Vector3; window.__dbg = { camera, appAt, interact, goSeat, INTER, ROOMDOORS, standUp, groundH, get hero() { return hero; }, step, joyVec, findPath, free, goApp, appAt, switchAccount, setZoom: (z) => { zoom = z; updateCamera(0, true); }, get path() { return path; }, solids, get acct() { return acct; }, get allowed() { return allowed; }, get frontOpen() { return frontOpen; }, canSee, get stageView() { return stageView; }, get stageYaw() { return stageYaw; }, setStageYaw: (v) => { stageYaw = AZ + v; }, applyAppVisibility, insideHouse };
 </script>
 </body>
