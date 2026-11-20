@@ -1,7 +1,8 @@
 # Hunyuan 3D GLB를 집 앱 캐릭터 형식으로 바꿈: 키 0.95m·발바닥 y=0·앞 +z, 관절 8개(root, hip, head, armL/R, legL/R, tail, 회전 없이 위치만),
 # 위치 규칙으로 정한 스킨 가중치, 기본색 텍스처 하나(2048 JPG, 크림색 흰 털은 중립 흰색으로)
-# 사용: python3 -I from_hunyuan.py <in.glb> <out.js>
-import sys, io, base64, struct, numpy as np, pygltflib
+# 사용: python3 -I from_hunyuan.py <in.glb> <out.js> [--auto]   (--auto: 팔이 몸통에 붙은 체형은 블렌더 자동 가중치로, autoweight.py)
+import sys, os, io, base64, struct, subprocess, tempfile, numpy as np, pygltflib
+AUTO = '--auto' in sys.argv; sys.argv = [a for a in sys.argv if a != '--auto']
 from PIL import Image
 
 src, out_js = sys.argv[1:3]
@@ -23,15 +24,30 @@ P[:, 0] -= (P[:, 0].min() + P[:, 0].max()) / 2
 head = P[:, 1] > 0.6; P[:, 2] -= P[head, 2].mean()  # 머리 중심을 z=0에
 
 # 관절 위치(절대): 목은 몸통이 가장 잘록한 높이(0.3~0.55 사이 가로 폭 최소)
-hs = np.arange(0.30, 0.56, 0.01); wid = [np.abs(P[(P[:, 1] > h - 0.005) & (P[:, 1] < h + 0.005), 0]).max() for h in hs]
-neck = float(hs[int(np.argmin(wid))]); hip_y = 0.17
+hs = np.arange(0.30, 0.72, 0.01); wid = [np.abs(P[(P[:, 1] > h - 0.005) & (P[:, 1] < h + 0.005), 0]).max() for h in hs]
+neck = float(hs[int(np.argmin(wid))])
+# 가랑이 높이: 아래에서부터 가운데(|x|<0.012)에 면이 처음 생기는 높이 (다리가 붙어 있으면 낮게 나옴)
+crotch = 0.08
+for h in np.arange(0.03, 0.4, 0.005):
+    if ((P[:, 1] > h - 0.004) & (P[:, 1] < h + 0.004) & (np.abs(P[:, 0]) < 0.012) & (P[:, 2] > -0.06)).any(): crotch = float(h); break  # 앞쪽만 봄(뒤로 늘어진 꼬리 제외)
+crotch = max(crotch, 0.08); hip_y = max(0.17, crotch + 0.05)
+# 팔과 몸통 사이 틈: 팔 높이에서 |x| 분포에 빈 구간이 있으면 그 시작점이 몸통 끝
+ah = (P[:, 1] > neck - 0.2) & (P[:, 1] < neck - 0.08)
+occ = np.bincount((np.abs(P[ah, 0]) / 0.005).astype(int), minlength=80) > 3
+gap = next((i for i in range(4, len(occ) - 2) if occ[i - 1] and not occ[i] and not occ[i + 1] and occ[i + 2:].any()), None)  # 바깥에 팔이 더 있어야 틈
+gap_x = gap * 0.005 if gap else None
 band = (P[:, 1] > neck - 0.07) & (P[:, 1] < neck - 0.03); arm_x = float(np.abs(P[band, 0]).max()) * 0.62
+if gap_x: arm_x = max(arm_x, gap_x + 0.02)
 torso = (P[:, 1] > 0.12) & (P[:, 1] < neck - 0.05)
 leg_x = float(np.abs(P[(P[:, 1] < 0.06), 0]).max()) * 0.5
 back_z = float(np.percentile(P[(P[:, 1] > 0.3) & (P[:, 1] < neck - 0.03) & (np.abs(P[:, 0]) < 0.08), 2], 3))  # 꼬리보다 높은 곳에서 잰 등 위치
+if AUTO:  # 손끝: 몸통 높이에서 가장 바깥쪽 정점들 중 가장 낮은 곳
+    side = (P[:, 1] > crotch + 0.05) & (P[:, 1] < neck) & (np.abs(P[:, 0]) > 0.8 * np.abs(P[(P[:, 1] > crotch + 0.05) & (P[:, 1] < neck), 0]).max())
+    k = np.argsort(P[side, 1])[:30]; hand = P[side][k]; hand_x = float(np.abs(hand[:, 0]).mean()); hand_y = float(hand[:, 1].mean())
+    arm_x = 0.78 * hand_x
 J = dict(root=(0, 0, 0), hip=(0, hip_y, 0), head=(0, neck, 0), armL=(arm_x, neck - 0.04, 0), armR=(-arm_x, neck - 0.04, 0),
-         legL=(leg_x, 0.1, 0), legR=(-leg_x, 0.1, 0), tail=(0, hip_y - 0.04, back_z))
-print('neck', round(neck, 3), 'arm_x', round(arm_x, 3), 'leg_x', round(leg_x, 3), 'back_z', round(back_z, 3))
+         legL=(leg_x, max(0.1, crotch), 0), legR=(-leg_x, max(0.1, crotch), 0), tail=(0, hip_y - 0.04, back_z))
+print('crotch', round(crotch, 3), 'gap_x', gap_x, 'neck', round(neck, 3), 'arm_x', round(arm_x, 3), 'leg_x', round(leg_x, 3), 'back_z', round(back_z, 3))
 
 # 가중치: 부드러운 경계로 머리·팔·다리·꼬리, 나머지는 hip
 sm = lambda v, a, b: np.clip((v - a) / (b - a), 0, 1)
@@ -39,14 +55,23 @@ X, Y, Z = P[:, 0], P[:, 1], P[:, 2]
 wHead = sm(Y, neck - 0.015, neck + 0.02)
 # 팔: 어깨 높이 아래, 몸통 바깥쪽(그 높이의 몸통 폭보다 바깥)
 armZone = sm(Y, 0.12, 0.17) * (1 - sm(Y, neck - 0.04, neck)) * (1 - wHead)
-wArmL = armZone * sm(X, arm_x * 0.72, arm_x * 0.92); wArmR = armZone * sm(-X, arm_x * 0.72, arm_x * 0.92)
-legZone = 1 - sm(Y, 0.06, 0.11)  # 발·짧은 다리만
+if gap_x: wArmL = armZone * sm(X, gap_x - 0.004, gap_x + 0.006); wArmR = armZone * sm(-X, gap_x - 0.004, gap_x + 0.006)  # 틈 바깥이 팔
+else: wArmL = armZone * sm(X, arm_x * 0.72, arm_x * 0.92); wArmR = armZone * sm(-X, arm_x * 0.72, arm_x * 0.92)
+legZone = 1 - sm(Y, max(0.06, crotch - 0.03), max(0.11, crotch + 0.02))  # 가랑이 아래 다리
 wLegL = legZone * sm(X, 0.01, 0.04); wLegR = legZone * sm(-X, 0.01, 0.04)
-butt_z = float(np.percentile(P[(P[:, 1] > 0.1) & (P[:, 1] < 0.25) & (np.abs(P[:, 0]) > 0.05) & (np.abs(P[:, 0]) < 0.15), 2], 2))  # 꼬리 높이의 엉덩이 뒷면(꼬리는 가운데라 옆쪽에서 잼)
+butt_z = float(np.percentile(P[(P[:, 1] > max(0.1, crotch)) & (P[:, 1] < max(0.25, crotch + 0.15)) & (np.abs(P[:, 0]) > 0.05) & (np.abs(P[:, 0]) < 0.15), 2], 2))  # 꼬리 높이의 엉덩이 뒷면(꼬리는 가운데라 옆쪽에서 잼)
 tailZone = sm(-Z, -butt_z, -butt_z + 0.03) * (1 - sm(Y, 0.4, 0.45))
 wTail = tailZone * (1 - wHead)
 Wt = np.stack([np.zeros_like(X), np.ones_like(X), wArmL, wArmR, wHead, wTail, wLegL, wLegR], 1)  # 순서: root hip armL armR head tail legL legR
 Wt[:, 1] = np.clip(1 - Wt[:, 2:].sum(1), 0, 1)
+if AUTO:
+    names8 = ['root', 'hip', 'armL', 'armR', 'head', 'tail', 'legL', 'legR']
+    tip = P[np.argmin(P[:, 2])]
+    T = dict(root=(0, 0.05, 0), hip=(0, neck, 0), head=(0, 0.95, 0), armL=(hand_x, hand_y, 0), armR=(-hand_x, hand_y, 0),
+             legL=(leg_x, 0.0, 0), legR=(-leg_x, 0.0, 0), tail=tuple(tip))
+    tmp = tempfile.mkdtemp(); np.savez(f'{tmp}/in.npz', P=P, I=IDX.reshape(-1, 3), J=np.array([J[n] for n in names8]), T=np.array([T[n] for n in names8]))
+    subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'autoweight.py'), f'{tmp}/in.npz', f'{tmp}/out.npz'], check=True)
+    Wt = np.load(f'{tmp}/out.npz')['W']; print('auto weights')
 Wt /= Wt.sum(1, keepdims=True)
 order = np.argsort(-Wt, 1)[:, :4]; JW = np.take_along_axis(Wt, order, 1); JW /= JW.sum(1, keepdims=True)
 JI = order.astype(np.uint8)

@@ -108,8 +108,8 @@ const ROOM_OWNER = { '작업실': 'dad', '안방': 'mom', '아이방': 'kid', '�
 const HOUSE_RECTS = [[-8.5, -3, -3, 3], [-3, 3, -3, 3], [-3, 2, -7, -3], [3, 6.5, -3, 0.5], [-6.5, -3, 3, 6.5], [-3, 0, 3, 6.5]]; // 안방, 거실, 딸 방, 화장실, 작업실, 옷방 (x0, x1, z0, z1)
 const insideHouse = (x, z) => HOUSE_RECTS.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
 const ANIMALS = { bear: '곰', cat: '고양이', tiger: '호랑이', dog: '강아지', penguin: '펭귄', rabbit: '토끼',
-  siamese: '샴고양이', lion: '숫사자', otter: '해달', hoonjay: '훈제', kitten: '연어' };
-const ANIMAL_ONLY = { hoonjay: ['dad', 'mom', 'kid'], kitten: ['dad', 'mom', 'kid'] }; // 이 계정에서만 고를 수 있는 캐릭터 (손님 제외)
+  siamese: '샴고양이', lion: '숫사자', otter: '해달', hoonjay: '훈제', kitten: '연어', pinkcat: 'Yel' };
+const ANIMAL_ONLY = { hoonjay: ['dad', 'mom', 'kid'], kitten: ['dad', 'mom', 'kid'], pinkcat: ['dad', 'mom', 'kid'] }; // 이 계정에서만 고를 수 있는 캐릭터 (손님 제외)
 const animalOk = (k, a) => !!ANIMALS[k] && (!ANIMAL_ONLY[k] || ANIMAL_ONLY[k].includes(a));
 const START = { studio: [-4.8, 5.0], master: [-5.3, 0.6], kid: [-0.5, -5.0], garden: [1.6, 7.8] };
 
@@ -760,6 +760,7 @@ function animal(kind) {
     lion: { fur: '#e3b77a', light: '#f6e5c8', ears: 'round', tail: 'tuft', mane: '#a8703c' }, otter: { fur: '#8b6a4e', light: '#ecdcc2', ears: 'small', tail: 'flat' },
     hoonjay: { fur: '#fbf8f0', light: '#ffffff', ears: 'tri', tail: 'long' },
     kitten: { fur: '#fbf8f0', light: '#ffffff', ears: 'tri', tail: 'long' },
+    pinkcat: { fur: '#f2c9cf', light: '#ffffff', ears: 'tri', tail: 'long' },
   }[kind];
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const fur = P.fur, pt = P.point ?? fur;
@@ -982,7 +983,7 @@ function animalOf(a) { const k = store.get('animal:' + a, ACCOUNTS[a].animal); r
 const GLB_KINDS = new Set(Object.keys(ANIMALS));
 const charGrad = new THREE.DataTexture(new Uint8Array([222, 248, 255]), 3, 1, THREE.RedFormat); charGrad.minFilter = charGrad.magFilter = THREE.NearestFilter; charGrad.needsUpdate = true;
 const glbCache = {};
-const CHAR_V = '20261120-3'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
+const CHAR_V = '20261120-4'; // 캐릭터 파일을 바꾸면 이 값도 바꿔서 브라우저 캐시(1시간)를 건너뜀
 function loadGlb(kind) {
   // 모델은 chars/<종류>.js 안에 base64로 들어 있음 (아티팩트가 .glb를 직접 못 올려서)
   return glbCache[kind] ??= import(`./chars/${kind}.js?v=${CHAR_V}`).then(m => new Promise((ok, no) => {
