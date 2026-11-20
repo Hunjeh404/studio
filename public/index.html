@@ -108,7 +108,9 @@ const ROOM_OWNER = { '작업실': 'dad', '안방': 'mom', '아이방': 'kid', '�
 const HOUSE_RECTS = [[-8.5, -3, -3, 3], [-3, 3, -3, 3], [-3, 2, -7, -3], [3, 6.5, -3, 0.5], [-6.5, -3, 3, 6.5], [-3, 0, 3, 6.5]]; // 안방, 거실, 딸 방, 화장실, 작업실, 옷방 (x0, x1, z0, z1)
 const insideHouse = (x, z) => HOUSE_RECTS.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
 const ANIMALS = { bear: '곰', cat: '고양이', tiger: '호랑이', dog: '강아지', penguin: '펭귄', rabbit: '토끼',
-  siamese: '샴고양이', lion: '숫사자', otter: '해달', hoonjay: '훈제', kitten: '아기고양이' };
+  siamese: '샴고양이', lion: '숫사자', otter: '해달', hoonjay: '훈제', kitten: '연어' };
+const ANIMAL_ONLY = { hoonjay: ['dad', 'mom'], kitten: ['dad', 'mom'] }; // 이 계정에서만 고를 수 있는 캐릭터
+const animalOk = (k, a) => !!ANIMALS[k] && (!ANIMAL_ONLY[k] || ANIMAL_ONLY[k].includes(a));
 const START = { studio: [-4.8, 5.0], master: [-5.3, 0.6], kid: [-0.5, -5.0], garden: [1.6, 7.8] };
 
 // ================= CORE =================
@@ -975,7 +977,7 @@ function renderFrame() {
 const store = { get(k, d) { try { const v = localStorage.getItem('house:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('house:' + k, JSON.stringify(v)); } catch {} } };
 let acct = store.get('account', 'dad');
 let hero = null;
-function animalOf(a) { const k = store.get('animal:' + a, ACCOUNTS[a].animal); return ANIMALS[k] ? k : ACCOUNTS[a].animal; }
+function animalOf(a) { const k = store.get('animal:' + a, ACCOUNTS[a].animal); return animalOk(k, a) ? k : ACCOUNTS[a].animal; }
 // 블렌더로 만든 캐릭터(GLB). 있는 종류는 파일을 불러와 바꿔 끼우고, 없는 종류는 기존 모양을 씀
 const GLB_KINDS = new Set(Object.keys(ANIMALS));
 const charGrad = new THREE.DataTexture(new Uint8Array([222, 248, 255]), 3, 1, THREE.RedFormat); charGrad.minFilter = charGrad.magFilter = THREE.NearestFilter; charGrad.needsUpdate = true;
@@ -1070,6 +1072,7 @@ $('appsBtn').onclick = (e) => { e.stopPropagation(); const p = $('appsPanel'); c
 const grid4 = $('animalPanel').querySelector('.grid');
 grid4.innerHTML = Object.entries(ANIMALS).map(([k, n]) => `<div class="item" data-k="${k}">${n}</div>`).join('');
 grid4.querySelectorAll('.item').forEach(el => el.onclick = () => {
+  if (!animalOk(el.dataset.k, acct)) return;
   store.set('animal:' + acct, el.dataset.k); const { x, z } = hero.position; spawnHero(x, z, hero.rotation.y); renderAcct();
   grid4.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e === el));
 });
@@ -1388,7 +1391,7 @@ function step(dt) {
   // 옷방 무대에 올라서면 캐릭터 고르기
   const onStage = Math.hypot(x - STAGE[0], z - STAGE[1]) < 0.55;
   if (onStage && !hero.userData.stage) {
-    closePanels('animalPanel'); $('animalPanel').style.display = 'block'; grid4.querySelectorAll('.item').forEach(e => e.classList.toggle('on', e.dataset.k === animalOf(acct)));
+    closePanels('animalPanel'); $('animalPanel').style.display = 'block'; grid4.querySelectorAll('.item').forEach(e => { e.style.display = animalOk(e.dataset.k, acct) ? '' : 'none'; e.classList.toggle('on', e.dataset.k === animalOf(acct)); });
     if (!stageView) { stageView = true; stageYaw = AZ; path = null; onArrive = null; joyVec.x = joyVec.y = 0; hideHint(); }
   }
   if (!onStage && hero.userData.stage) { $('animalPanel').style.display = 'none'; stageView = false; }
